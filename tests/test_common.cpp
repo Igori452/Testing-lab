@@ -2,10 +2,6 @@
 #include <gmock/gmock.h>
 #include "ConvexHull.h"
 
-// Реализация общих тестов черного ящика для обоих алгоритмов (6 assertions and 3 matchers)
-
-//================================== EP ==================================
-
 TEST(EpTestsForAlgorithms, EP01) 
 {
 	JarvisAlgorithm jarvis;
@@ -120,8 +116,6 @@ TEST(EpTestsForAlgorithms, EP06)
 	EXPECT_THAT(jarvisResult, testing::Each(testing::Ne(Point(50, 50))));
 	EXPECT_THAT(grahamResult, testing::Each(testing::Ne(Point(50, 50))));
 }
-
-//================================== BV ==================================
 
 TEST(BvTestsForAlgorithms, BV01)
 {

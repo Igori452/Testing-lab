@@ -6,13 +6,11 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::AtLeast;
 
-// ==================== МОК ДЛЯ ЛОГГЕРА ====================
 class MockLogger {
 public:
     MOCK_METHOD(void, log, (const std::string& message));
 };
 
-// Модифицированный алгоритм с логгером
 class JarvisAlgorithmWithLogger : public JarvisAlgorithm {
 private:
     MockLogger* logger;
@@ -27,7 +25,6 @@ public:
     }
 };
 
-// ==================== МОК ДЛЯ ВАЛИДАТОРА ====================
 class MockValidator {
 public:
     MOCK_METHOD(bool, isValidPoint, (const Point& p));
@@ -50,7 +47,6 @@ public:
     }
 };
 
-// ==================== МОК ДЛЯ ОБРАБОТЧИКА РЕЗУЛЬТАТОВ ====================
 class MockResultHandler {
 public:
     MOCK_METHOD(void, handleResult, (const std::vector<Point>& hull));
@@ -69,9 +65,6 @@ public:
     }
 };
 
-// ==================== ТЕСТЫ ====================
-
-// Тест 1: Проверка логгера с алгоритмом Джарвиса
 TEST(MockTests, JarvisWithLogger)
 {
     MockLogger mockLogger;
@@ -86,7 +79,6 @@ TEST(MockTests, JarvisWithLogger)
     EXPECT_EQ(hull.size(), 3);
 }
 
-// Тест 2: Проверка валидатора с алгоритмом Грэхема
 TEST(MockTests, GrahamWithValidator)
 {
     MockValidator mockValidator;
@@ -104,7 +96,6 @@ TEST(MockTests, GrahamWithValidator)
     EXPECT_EQ(hull.size(), 3);
 }
 
-// Тест 3: Проверка обработчика результатов
 TEST(MockTests, AlgorithmWithResultHandler)
 {
     MockResultHandler mockHandler;
