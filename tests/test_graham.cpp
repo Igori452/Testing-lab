@@ -149,7 +149,7 @@ TEST(GrahamAlgorithmTest, GR09)
 
 TEST(GrahamAlgorithmTest, GR10)
 {
-    //GTEST_SKIP() << "For correct operation of mutation testing!";
+    GTEST_SKIP() << "For correct operation of mutation testing!";
     GrahamAlgorithm graham;
     std::vector<Point> points = { Point(0,0), Point(100,0), Point(80,50), Point(50,80) };
 

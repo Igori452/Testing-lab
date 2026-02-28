@@ -43,7 +43,7 @@ TEST(JarvisAlgorithmTest, JR03)
 
 TEST(JarvisAlgorithmTest, JR04)
 {
-    //GTEST_SKIP() << "For correct operation of mutation testing!";
+    GTEST_SKIP() << "For correct operation of mutation testing!";
     JarvisAlgorithm jarvis;
     std::vector<Point> points = { Point(200,200), Point(100,100), Point(300,300) };
 

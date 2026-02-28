@@ -1,138 +1,143 @@
-#[[
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY
-    "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+if(UNIX AND NOT APPLE)
+    set(CMAKE_C_COMPILER clang-15)
+    set(CMAKE_CXX_COMPILER clang++-15)
+endif()
 
 project(ConvexHull)
+
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(BUILD_TESTS)
-    add_subdirectory(libraries/googletest)
-    enable_testing()
-endif()
-
-# Опции сборки
+option(BUILD_APP "Build main application" ON)
 option(BUILD_TESTS "Build tests" ON)
-option(BUILD_EXAMPLES "Build examples" OFF)
+option(BUILD_MULL "Build with Mull mutation testing" ON)
 
-set(CMAKE_CXX_FLAGS_SAVE ${CMAKE_CXX_FLAGS})
-
-# Отключаем сборку примеров и тестов SFML
-set(SFML_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(SFML_BUILD_TEST_SUITE OFF CACHE BOOL "" FORCE)
-
-# Подключаем внешние библиотеки
-add_subdirectory(libraries/sfml)
-if(BUILD_TESTS)
-    add_subdirectory(libraries/googletest)
-    enable_testing()
+if(BUILD_MULL)
+    if(NOT UNIX)
+        set(BUILD_MULL OFF)
+    else()
+        set(BUILD_APP OFF)
+        set(BUILD_TESTS OFF)
+    endif()
 endif()
 
-# Основная библиотека с алгоритмами
-add_library(convex_hull_lib STATIC
-    ConvexHull.cpp
-)
+if(WIN32)
+    set(BUILD_MULL OFF)
+endif()
 
-# Основное приложение (с графикой)
-add_executable(ConvexHull
-    main.cpp
-    display.cpp)
+if(BUILD_MULL)
+    set(MULL_PLUGIN "/usr/lib/mull-ir-frontend-15")
+    
+    if(NOT EXISTS "${MULL_PLUGIN}")
+        message(WARNING "Mull plugin not found at ${MULL_PLUGIN}")
+    endif()
 
-target_link_libraries(ConvexHull convex_hull_lib sfml-graphics sfml-window sfml-system)
+    add_subdirectory(libraries/googletest)
+    enable_testing()
 
-# Тесты
-if(BUILD_TESTS)
-    add_executable(ConvexHullTests
+    add_library(convex_hull_lib STATIC app/ConvexHull.cpp)
+
+    target_compile_options(convex_hull_lib PRIVATE
+        $<$<BOOL:${MULL_PLUGIN}>:-fpass-plugin=${MULL_PLUGIN}>
+        -g
+        -grecord-command-line
+        -O0
+        -fno-inline
+    )
+
+    set(TEST_SOURCES
         tests/test_main.cpp
         tests/test_comprassion.cpp
         tests/test_graham.cpp
         tests/test_jarvis.cpp
         tests/test_common.cpp
-        tests/test_mocks.cpp)
+        tests/test_mocks.cpp
+    )
+
+    add_executable(ConvexHull_mull ${TEST_SOURCES})
+
+    target_include_directories(ConvexHull_mull PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/app
+    )
+
+    target_compile_options(ConvexHull_mull PRIVATE
+        $<$<BOOL:${MULL_PLUGIN}>:-fpass-plugin=${MULL_PLUGIN}>
+        -g
+        -grecord-command-line
+        -O0
+        -fno-inline
+    )
+
+    target_link_libraries(ConvexHull_mull
+        convex_hull_lib
+        gtest_main
+        gmock
+        pthread
+    )
+endif()
+
+if(NOT TARGET convex_hull_lib)
+    add_library(convex_hull_lib STATIC app/ConvexHull.cpp)
+endif()
+
+if(BUILD_APP)
+    add_subdirectory(libraries/sfml)
+
+    add_executable(ConvexHull_app
+        app/main.cpp
+        app/display.cpp
+    )
+
+    target_include_directories(ConvexHull_app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/app
+    )
+
+    target_link_libraries(ConvexHull_app
+        convex_hull_lib
+        sfml-graphics
+        sfml-window
+        sfml-system
+    )
+endif()
+
+if(BUILD_TESTS AND NOT BUILD_MULL)
+    if(NOT TARGET gtest_main)
+        add_subdirectory(libraries/googletest)
+    endif()
     
-    target_link_libraries(ConvexHullTests 
-        convex_hull_lib 
-        gtest_main 
+    enable_testing()
+
+    set(TEST_SOURCES
+        tests/test_main.cpp
+        tests/test_comprassion.cpp
+        tests/test_graham.cpp
+        tests/test_jarvis.cpp
+        tests/test_common.cpp
+        tests/test_mocks.cpp
+    )
+
+    add_executable(ConvexHull_tests ${TEST_SOURCES})
+
+    target_include_directories(ConvexHull_tests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/app
+    )
+
+    target_link_libraries(ConvexHull_tests
+        convex_hull_lib
+        gtest_main
         gmock
     )
     
-    target_include_directories(ConvexHullTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    if(UNIX)
+        target_link_libraries(ConvexHull_tests pthread)
+    endif()
 
-    # Регистрируем тесты для CTest
-    add_test(NAME ConvexHullTests COMMAND ConvexHullTests)
-endif()]]
+    add_test(NAME ConvexHull_tests COMMAND ConvexHull_tests)
+endif()
 
-cmake_minimum_required(VERSION 3.16)
-
-project(ConvexHullMull)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_BUILD_TYPE Debug)
-
-# Принудительно используем Clang-15
-set(CMAKE_C_COMPILER /usr/bin/clang-15)
-set(CMAKE_CXX_COMPILER /usr/bin/clang++-15)
-
-set(CMAKE_CXX_FLAGS_COVERAGE
-    "-g -O0 -fprofile-instr-generate -fcoverage-mapping"
-    CACHE STRING "Flags used for coverage builds.")
-
-set(CMAKE_EXE_LINKER_FLAGS_COVERAGE
-    "-fprofile-instr-generate"
-    CACHE STRING "Linker flags for coverage builds.")
-
-# Флаги для Mull
-set(MULL_PLUGIN "/usr/lib/mull-ir-frontend-15")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpass-plugin=${MULL_PLUGIN} -g -grecord-command-line -O0 -fno-inline")
-
-# GoogleTest
-add_subdirectory(libraries/googletest)
-enable_testing()
-
-# Основная библиотека с алгоритмами (если нужна)
-add_library(convex_hull_lib STATIC ConvexHull.cpp)
-
-# Исполняемый файл тестов
-add_executable(ConvexHullTests
-    tests/test_main.cpp
-    tests/test_comprassion.cpp
-    tests/test_graham.cpp
-    tests/test_jarvis.cpp
-    tests/test_common.cpp
-    tests/test_mocks.cpp
-    ConvexHull.cpp  # если convex_hull_lib не используется
-)
-
-target_include_directories(ConvexHullTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-target_link_libraries(ConvexHullTests
-    # convex_hull_lib  # раскомментируйте если используете библиотеку
-    gtest_main
-    gmock
-    pthread
-)
-
-# Регистрируем тест для CTest
-add_test(NAME ConvexHullTests COMMAND ConvexHullTests)
-
-#[[
-    cmake .. \
-    -DCMAKE_C_COMPILER=clang-15 \
-    -DCMAKE_CXX_COMPILER=clang++-15 \
-    -DCMAKE_BUILD_TYPE=Coverage \
-    -DCMAKE_CXX_FLAGS="-g -O0 -fprofile-instr-generate -fcoverage-mapping" \
-    -DCMAKE_EXE_LINKER_FLAGS="-fprofile-instr-generate"
-
-
-    llvm-cov-15 show ./ConvexHullTests \
-    -instr-profile=coverage.profdata \
-    -format=html \
-    -output-dir=./coverage_report \
-    -show-line-counts-or-regions \
-    -ignore-filename-regex="(tests|googletest|gmock)/*"
-
-    mull-runner-15 -ide-reporter-show-killed ./ConvexHullTests
-]]
+if(BUILD_TESTS AND BUILD_MULL)
+endif()
