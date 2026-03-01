@@ -1,0 +1,2 @@
+C:\MinGW\bin\ar.exe qc ..\..\..\libraries\sfml\lib\libmbedx509d.a CMakeFiles/mbedx509.dir/pkcs7.c.obj CMakeFiles/mbedx509.dir/x509.c.obj CMakeFiles/mbedx509.dir/x509_create.c.obj CMakeFiles/mbedx509.dir/x509_crl.c.obj CMakeFiles/mbedx509.dir/x509_crt.c.obj CMakeFiles/mbedx509.dir/x509_csr.c.obj CMakeFiles/mbedx509.dir/x509write.c.obj CMakeFiles/mbedx509.dir/x509write_crt.c.obj CMakeFiles/mbedx509.dir/x509write_csr.c.obj
+C:\MinGW\bin\ranlib.exe ..\..\..\libraries\sfml\lib\libmbedx509d.a

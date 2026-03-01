@@ -1,0 +1,1 @@
+-IC:/work/c++/testedProject/libraries/sfml/include -IC:/work/c++/testedProject/libraries/sfml/src -isystem C:/work/c++/testedProject/libraries/sfml/extlibs/headers/glad/include -isystem C:/work/c++/testedProject/libraries/sfml/extlibs/headers/vulkan -isystem C:/work/c++/testedProject/libraries/sfml/extlibs/headers/mingw

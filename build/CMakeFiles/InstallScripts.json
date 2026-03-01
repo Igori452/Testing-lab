@@ -1,0 +1,32 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/work/c++/testedProject/build/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/sfml/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/sfml/src/SFML/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/sfml/src/SFML/System/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/sfml/src/SFML/Main/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/sfml/src/SFML/Window/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/sfml/src/SFML/Network/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/mbedtls-build/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/mbedtls-build/framework/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/mbedtls-build/include/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/mbedtls-build/library/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/mbedtls-build/pkgconfig/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/sfml/src/SFML/Graphics/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/freetype-build/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/harfbuzz-build/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/sheenbidi-build/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/sfml/src/SFML/Audio/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/ogg-build/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/flac-build/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/flac-build/src/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/flac-build/src/libFLAC/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/vorbis-build/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/_deps/vorbis-build/lib/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/googletest/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/googletest/googlemock/cmake_install.cmake",
+		"C:/work/c++/testedProject/build/libraries/googletest/googletest/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

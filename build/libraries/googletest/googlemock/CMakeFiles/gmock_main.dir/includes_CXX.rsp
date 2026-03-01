@@ -1,0 +1,1 @@
+-isystem C:/work/c++/testedProject/libraries/googletest/googlemock/include -isystem C:/work/c++/testedProject/libraries/googletest/googlemock -isystem C:/work/c++/testedProject/libraries/googletest/googletest/include -isystem C:/work/c++/testedProject/libraries/googletest/googletest

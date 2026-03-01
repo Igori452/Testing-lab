@@ -39,6 +39,7 @@ if(BUILD_MULL)
 
     add_library(convex_hull_lib STATIC app/ConvexHull.cpp)
 
+    # Только библиотека компилируется с Mull плагином
     target_compile_options(convex_hull_lib PRIVATE
         $<$<BOOL:${MULL_PLUGIN}>:-fpass-plugin=${MULL_PLUGIN}>
         -g
@@ -64,9 +65,7 @@ if(BUILD_MULL)
     )
 
     target_compile_options(ConvexHull_mull PRIVATE
-        $<$<BOOL:${MULL_PLUGIN}>:-fpass-plugin=${MULL_PLUGIN}>
         -g
-        -grecord-command-line
         -O0
         -fno-inline
     )

@@ -1,0 +1,1 @@
+-I"C:/work/c++/testedProject/build/_deps/harfbuzz-src/src" -I"C:/work/c++/testedProject/build/_deps/harfbuzz-build/src" -isystem "C:/work/c++/testedProject/build/_deps/freetype-build/include" -isystem "C:/work/c++/testedProject/build/_deps/freetype-src/include"

@@ -1,0 +1,2 @@
+C:\MinGW\bin\ar.exe qc ..\..\..\libraries\sfml\lib\libvorbisfiled.a CMakeFiles/vorbisfile.dir/Unity/unity_0_c.c.obj
+C:\MinGW\bin\ranlib.exe ..\..\..\libraries\sfml\lib\libvorbisfiled.a
