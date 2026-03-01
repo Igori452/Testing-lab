@@ -159,9 +159,9 @@ CMakeFiles/convex_hull_lib.dir/clean:
 # Target rules for target CMakeFiles/ConvexHull_mull.dir
 
 # All Build rule for target.
+CMakeFiles/ConvexHull_mull.dir/all: libraries/googletest/googlemock/CMakeFiles/gmock.dir/all
 CMakeFiles/ConvexHull_mull.dir/all: CMakeFiles/convex_hull_lib.dir/all
 CMakeFiles/ConvexHull_mull.dir/all: libraries/googletest/googletest/CMakeFiles/gtest.dir/all
-CMakeFiles/ConvexHull_mull.dir/all: libraries/googletest/googlemock/CMakeFiles/gmock.dir/all
 CMakeFiles/ConvexHull_mull.dir/all: libraries/googletest/googletest/CMakeFiles/gtest_main.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ConvexHull_mull.dir/build.make CMakeFiles/ConvexHull_mull.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ConvexHull_mull.dir/build.make CMakeFiles/ConvexHull_mull.dir/build
@@ -214,8 +214,8 @@ libraries/googletest/googlemock/CMakeFiles/gmock.dir/clean:
 # Target rules for target libraries/googletest/googlemock/CMakeFiles/gmock_main.dir
 
 # All Build rule for target.
-libraries/googletest/googlemock/CMakeFiles/gmock_main.dir/all: libraries/googletest/googletest/CMakeFiles/gtest.dir/all
 libraries/googletest/googlemock/CMakeFiles/gmock_main.dir/all: libraries/googletest/googlemock/CMakeFiles/gmock.dir/all
+libraries/googletest/googlemock/CMakeFiles/gmock_main.dir/all: libraries/googletest/googletest/CMakeFiles/gtest.dir/all
 	$(MAKE) $(MAKESILENT) -f libraries/googletest/googlemock/CMakeFiles/gmock_main.dir/build.make libraries/googletest/googlemock/CMakeFiles/gmock_main.dir/depend
 	$(MAKE) $(MAKESILENT) -f libraries/googletest/googlemock/CMakeFiles/gmock_main.dir/build.make libraries/googletest/googlemock/CMakeFiles/gmock_main.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/project/build-mull/CMakeFiles --progress-num=12,13 "Built target gmock_main"
