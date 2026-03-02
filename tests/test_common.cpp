@@ -2,7 +2,7 @@
 #include <gmock/gmock.h>
 #include "ConvexHull.h"
 
-TEST(EpTestsForAlgorithms, EP01) 
+TEST(EpTestsForAlgorithms, TC_EP_001) 
 {
 	JarvisAlgorithm jarvis;
 	GrahamAlgorithm graham;
@@ -20,25 +20,29 @@ TEST(EpTestsForAlgorithms, EP01)
 	EXPECT_EQ(grahamResult.size(), 0);
 }
 
-TEST(EpTestsForAlgorithms, EP02)
+bool hasValidHullForDuplicates(const std::vector<Point>& hull) {
+	return hull.empty();  // для дубликатов должна быть пустая оболочка
+}
+
+TEST(EpTestsForAlgorithms, TC_EP_002)
 {
 	JarvisAlgorithm jarvis;
 	GrahamAlgorithm graham;
 
-	std::vector<Point> points = { Point(100, 100), Point(100, 100), Point(100, 100), Point(100, 100) };
+	std::vector<Point> points = { Point(100, 100), 
+								  Point(100, 100), 
+								  Point(100, 100), 
+								  Point(100, 100) };
 
 	auto jarvisResult = jarvis.findConvexHull(points);
 	auto grahamResult = graham.findConvexHull(points);
 
 	// ASSERTION
-	EXPECT_TRUE(jarvisResult.empty());
-	EXPECT_TRUE(grahamResult.empty());
-
-	EXPECT_EQ(jarvisResult.size(), 0);
-	EXPECT_EQ(grahamResult.size(), 0);
+	EXPECT_PRED1(hasValidHullForDuplicates, jarvisResult);
+	EXPECT_PRED1(hasValidHullForDuplicates, grahamResult);
 }
 
-TEST(EpTestsForAlgorithms, EP03)
+TEST(EpTestsForAlgorithms, TC_EP_003)
 {
 	JarvisAlgorithm jarvis;
 	GrahamAlgorithm graham;
@@ -56,7 +60,7 @@ TEST(EpTestsForAlgorithms, EP03)
 	EXPECT_EQ(grahamResult.size(), 0);
 }
 
-TEST(EpTestsForAlgorithms, EP04)
+TEST(EpTestsForAlgorithms, TC_EP_004)
 {
 	JarvisAlgorithm jarvis;
 	GrahamAlgorithm graham;
@@ -78,7 +82,7 @@ TEST(EpTestsForAlgorithms, EP04)
 	}
 }
 
-TEST(EpTestsForAlgorithms, EP05)
+TEST(EpTestsForAlgorithms, TC_EP_005)
 {
 	JarvisAlgorithm jarvis;
 	GrahamAlgorithm graham;
@@ -96,7 +100,7 @@ TEST(EpTestsForAlgorithms, EP05)
 	EXPECT_EQ(grahamResult.size(), 0);
 }
 
-TEST(EpTestsForAlgorithms, EP06)
+TEST(EpTestsForAlgorithms, TC_EP_006)
 {
 	JarvisAlgorithm jarvis;
 	GrahamAlgorithm graham;
@@ -117,7 +121,25 @@ TEST(EpTestsForAlgorithms, EP06)
 	EXPECT_THAT(grahamResult, testing::Each(testing::Ne(Point(50, 50))));
 }
 
-TEST(BvTestsForAlgorithms, BV01)
+TEST(BvTestsForAlgorithms, TC_BV_001)
+{
+	JarvisAlgorithm jarvis;
+	GrahamAlgorithm graham;
+
+	std::vector<Point> points = {};
+
+	auto jarvisResult = jarvis.findConvexHull(points);
+	auto grahamResult = graham.findConvexHull(points);
+
+	// ASSERTION
+	EXPECT_TRUE(jarvisResult.empty());
+	EXPECT_TRUE(grahamResult.empty());
+
+	EXPECT_EQ(jarvisResult.size(), 0);
+	EXPECT_EQ(grahamResult.size(), 0);
+}
+
+TEST(BvTestsForAlgorithms, TC_BV_002)
 {
 	JarvisAlgorithm jarvis;
 	GrahamAlgorithm graham;
@@ -135,7 +157,7 @@ TEST(BvTestsForAlgorithms, BV01)
 	EXPECT_EQ(grahamResult.size(), 0);
 }
 
-TEST(BvTestsForAlgorithms, BV02)
+TEST(BvTestsForAlgorithms, TC_BV_003)
 {
 	JarvisAlgorithm jarvis;
 	GrahamAlgorithm graham;
@@ -162,7 +184,7 @@ struct ThreePointsTestCase {
 
 class ThreePointsTest : public testing::TestWithParam<ThreePointsTestCase> {};
 
-TEST_P(ThreePointsTest, BV03andBV04)
+TEST_P(ThreePointsTest, TC_BV_004andTC_BV_005)
 {
 	JarvisAlgorithm jarvis;
 	GrahamAlgorithm graham;
@@ -206,7 +228,7 @@ INSTANTIATE_TEST_SUITE_P(
 );
 
 
-TEST(BvTestsForAlgorithms, BV05)
+TEST(BvTestsForAlgorithms, TC_BV_006)
 {
 	GTEST_SKIP() << "The test has been disabled because the developer is aware of the error.";
 
@@ -225,7 +247,7 @@ TEST(BvTestsForAlgorithms, BV05)
 	EXPECT_EQ(grahamResult.size(), 3);
 }
 
-TEST(BvTestsForAlgorithms, BV06)
+TEST(BvTestsForAlgorithms, TC_BV_007)
 {
 	JarvisAlgorithm jarvis;
 	GrahamAlgorithm graham;
@@ -252,26 +274,4 @@ TEST(BvTestsForAlgorithms, BV06)
 	EXPECT_THAT(grahamResult, testing::UnorderedElementsAre(
 		Point(0, 0), Point(150, 150), Point(150, 50)
 	));
-}
-
-bool hasValidHullForDuplicates(const std::vector<Point>& hull) {
-	return hull.empty();  // для дубликатов должна быть пустая оболочка
-}
-
-TEST(BvTestsForAlgorithms, BV07)
-{
-	std::vector<Point> points = {
-		Point(100,100), Point(100,100), Point(100,100), Point(200,200)
-	};
-
-	JarvisAlgorithm jarvis;
-	GrahamAlgorithm graham;
-
-	auto jarvisResult = jarvis.findConvexHull(points);
-	auto grahamResult = graham.findConvexHull(points);
-
-
-	// ASSERTION
-	EXPECT_PRED1(hasValidHullForDuplicates, jarvisResult);
-	EXPECT_PRED1(hasValidHullForDuplicates, grahamResult);
 }
