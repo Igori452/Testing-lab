@@ -1,1 +1,0 @@
--IC:/work/c++/testedProject/libraries/sfml/include -IC:/work/c++/testedProject/libraries/sfml/src -isystem "C:/work/c++/testedProject/build/_deps/mbedtls-src/include"

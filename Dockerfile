@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     lsb-release \
     software-properties-common \
     build-essential \
+    libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Добавляем репозиторий Mull

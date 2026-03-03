@@ -10,24 +10,22 @@ project(ConvexHull)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(BUILD_APP "Build main application" ON)
-option(BUILD_TESTS "Build tests" ON)
-option(BUILD_MULL "Build with Mull mutation testing" ON)
 
-if(BUILD_MULL)
-    if(NOT UNIX)
-        set(BUILD_MULL OFF)
-    else()
-        set(BUILD_APP OFF)
-        set(BUILD_TESTS OFF)
-    endif()
-endif()
+option(BUILD_APP "Build main application" OFF)
+option(BUILD_TESTS "Build tests" OFF)
+option(BUILD_MULL "Build with Mull mutation testing" OFF)
+option(BUILD_BDD "Build BDD tests with Cucumber-Cpp" ON) 
 
-if(WIN32)
+
+if(NOT UNIX)
     set(BUILD_MULL OFF)
 endif()
 
 if(BUILD_MULL)
+    set(BUILD_APP OFF)
+    set(BUILD_TESTS OFF)
+    set(BUILD_BDD OFF)
+
     set(MULL_PLUGIN "/usr/lib/mull-ir-frontend-15")
     
     if(NOT EXISTS "${MULL_PLUGIN}")
@@ -138,5 +136,40 @@ if(BUILD_TESTS AND NOT BUILD_MULL)
     add_test(NAME ConvexHull_tests COMMAND ConvexHull_tests)
 endif()
 
-if(BUILD_TESTS AND BUILD_MULL)
+if(BUILD_BDD AND NOT BUILD_MULL)
+
+    add_subdirectory(libraries/Catch2)
+
+    find_package(Boost REQUIRED COMPONENTS regex system)
+
+    set(GHERKIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/gherkin_tests")
+
+    set(STEP_FILES
+        jarvis_hull
+        graham_hull
+        error_handling
+        visualization
+        performance_comparison
+    )
+    
+    set(BDD_STEP_SOURCES
+        ${GHERKIN_DIR}/features/step_definitions/jarvis_hull.cpp
+        #${GHERKIN_DIR}/features/step_definitions/graham_hull.cpp
+        #${GHERKIN_DIR}/features/step_definitions/error_handling.cpp
+        #${GHERKIN_DIR}/features/step_definitions/visualization.cpp
+        #${GHERKIN_DIR}/features/step_definitions/performance_comparison.cpp
+    )
+    
+    add_executable(ConvexHull_bdd ${BDD_STEP_SOURCES})
+    
+    target_link_libraries(ConvexHull_bdd
+        convex_hull_lib
+        Catch2::Catch2
+    )
+
+    target_include_directories(ConvexHull_bdd PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/app
+        ${Boost_INCLUDE_DIRS}
+    )
 endif()

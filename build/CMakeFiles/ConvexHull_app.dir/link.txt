@@ -1,3 +1,0 @@
-"C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E rm -f CMakeFiles\ConvexHull_app.dir/objects.a
-C:\MinGW\bin\ar.exe qc CMakeFiles\ConvexHull_app.dir/objects.a @CMakeFiles\ConvexHull_app.dir\objects1.rsp
-C:\MinGW\bin\g++.exe -g -Wl,--whole-archive CMakeFiles\ConvexHull_app.dir/objects.a -Wl,--no-whole-archive -o ConvexHull_app.exe -Wl,--out-implib,libConvexHull_app.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\ConvexHull_app.dir\linkLibs.rsp

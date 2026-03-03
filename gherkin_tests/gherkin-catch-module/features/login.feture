@@ -1,0 +1,6 @@
+Feature: Calculator
+
+  Scenario: Simple addition
+    Given calculator is running
+    When I add 1 and 1
+    Then result should be 2
