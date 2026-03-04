@@ -1,2 +1,0 @@
-/usr/bin/llvm-ar-15 qc libconvex_hull_lib.a CMakeFiles/convex_hull_lib.dir/app/ConvexHull.cpp.o
-/usr/bin/llvm-ranlib-15 libconvex_hull_lib.a
