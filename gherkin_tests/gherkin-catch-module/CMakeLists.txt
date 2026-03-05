@@ -32,17 +32,51 @@ target_link_libraries(gherkin_catch_module
         gherkin
 )
 
-add_executable(gherkin_tests
-    tests/jarvis_hull.cpp
+# Jarvis tests
+add_executable(jarvis_tests
     tests/context/context.cpp
-    #tests/graham_hull.cpp
+    tests/jarvis_hull.cpp
     ${APP_SOURCE_DIR}/ConvexHull.cpp
 )
 
-target_link_libraries(gherkin_tests
-    PRIVATE
-        gherkin_catch_module
+target_link_libraries(jarvis_tests PRIVATE gherkin_catch_module)
+
+# Graham tests
+add_executable(graham_tests
+    tests/context/context.cpp
+    tests/graham_hull.cpp
+    ${APP_SOURCE_DIR}/ConvexHull.cpp
 )
 
+target_link_libraries(graham_tests PRIVATE gherkin_catch_module)
+
+# Visualisation tests
+add_executable(visualisation_tests
+    tests/context/context.cpp
+    tests/visualisation.cpp
+    ${APP_SOURCE_DIR}/ConvexHull.cpp
+)
+
+target_link_libraries(visualisation_tests PRIVATE gherkin_catch_module)
+
+# Error handling tests
+add_executable(error_tests
+    tests/context/context.cpp
+    tests/error_handling.cpp
+    ${APP_SOURCE_DIR}/ConvexHull.cpp
+)
+
+target_link_libraries(error_tests PRIVATE gherkin_catch_module)
+
+# performance tests
+add_executable(performance_tests
+    tests/context/context.cpp
+    tests/performance_comparison.cpp
+    ${APP_SOURCE_DIR}/ConvexHull.cpp
+)
+
+target_link_libraries(performance_tests PRIVATE gherkin_catch_module)
+
+# Копируем features для всех тестов
 file (COPY ${CMAKE_CURRENT_SOURCE_DIR}/features/ 
       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/features/)

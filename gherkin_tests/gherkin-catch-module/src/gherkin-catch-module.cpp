@@ -40,12 +40,7 @@ namespace gherkin_bridge {
     }
 
     void GherkinValidator::loadFeatures(const std::string& path) {
-        namespace fs = std::filesystem;
-        for (const auto& entry : fs::recursive_directory_iterator(path)) {
-            if (entry.path().extension() == ".feature") {
-                parseFeatureFile(entry.path().string());
-            }
-        }
+        parseFeatureFile(path);
     }
 
     std::wstring readFileUtf8ToWstring(const std::string& filename) {
@@ -168,8 +163,8 @@ namespace gherkin_bridge {
 
     bool GherkinValidator::validateStep(const std::string& keyword, const std::string& text) {
         std::string key = keyword + " " + text;
-        
-        // 1. Сначала точное совпадение
+
+        // 1. Точное совпадение
         auto it = steps_.find(key);
         if (it != steps_.end()) {
             if (!it->second) {
@@ -179,49 +174,57 @@ namespace gherkin_bridge {
             }
             return true;
         }
-        
-        // 2. Потом pattern matching
+
+        // 2. УНИВЕРСАЛЬНЫЙ шаблон: любой текст в < > заменяем на (.*)
         for (auto& [step, used] : steps_) {
             if (step.find(keyword) != 0) continue;
-            
+
             std::string stepText = step.substr(keyword.length() + 1);
-            
+            std::string userText = text;
+
+            // Проверяем, есть ли в шаблоне <...>
             if (stepText.find('<') != std::string::npos && stepText.find('>') != std::string::npos) {
-                
-                std::string normalizedText = text;
-                std::string normalizedStep = stepText;
-                
-                std::regex numberRegex("\\b\\d+\\b");
-                std::regex patternRegex("<[^>]+>");
-                
-                normalizedText = std::regex_replace(normalizedText, numberRegex, "<num>");
-                normalizedStep = std::regex_replace(normalizedStep, patternRegex, "<num>");
-                
-                normalizedText = std::regex_replace(normalizedText, std::regex("\\\""), "");
-                normalizedStep = std::regex_replace(normalizedStep, std::regex("\\\""), "");
-                
-                if (normalizedText == normalizedStep) {
+
+                // Создаем regex: все что в < > заменяем на (.*)
+                std::string pattern = stepText;
+
+                // Экранируем спецсимволы
+                pattern = std::regex_replace(pattern, std::regex("\\."), "\\.");
+                pattern = std::regex_replace(pattern, std::regex("\\?"), "\\?");
+                pattern = std::regex_replace(pattern, std::regex("\\*"), "\\*");
+                pattern = std::regex_replace(pattern, std::regex("\\+"), "\\+");
+                pattern = std::regex_replace(pattern, std::regex("\\["), "\\[");
+                pattern = std::regex_replace(pattern, std::regex("\\]"), "\\]");
+                pattern = std::regex_replace(pattern, std::regex("\\{"), "\\{");
+                pattern = std::regex_replace(pattern, std::regex("\\}"), "\\}");
+                pattern = std::regex_replace(pattern, std::regex("\\("), "\\(");
+                pattern = std::regex_replace(pattern, std::regex("\\)"), "\\)");
+                pattern = std::regex_replace(pattern, std::regex("\\|"), "\\|");
+
+                // Заменяем <...> на (.*) — любые символы
+                pattern = std::regex_replace(pattern, std::regex("<[^>]+>"), "(.*)");
+
+                std::regex stepRegex("^" + pattern + "$");
+                std::smatch matches;
+
+                if (std::regex_match(userText, matches, stepRegex)) {
                     if (!used) {
                         steps_[step] = true;
                         used_count_++;
-                        std::cout << "  ✅ Pattern match marked: '" << step << "'\n";
+                        std::cout << "  ✅ Universal match: '" << step
+                            << "' → '" << text << "'\n";
+
+                        // Опционально: выводим захваченные значения
+                        for (size_t i = 1; i < matches.size(); ++i) {
+                            std::cout << "     captured: '" << matches[i].str() << "'\n";
+                        }
                     }
                     return true;
                 }
             }
         }
-        
-        // 3. Если не нашли - выводим отладку
+
         std::cout << "  ❌ Not found: '" << key << "'\n";
-        if (keyword == "But") {
-            std::cout << "  All But steps in registry:\n";
-            for (const auto& [step, used] : steps_) {
-                if (step.find("But ") == 0) {
-                    std::cout << "    - '" << step << "' (used: " << used << ")\n";
-                }
-            }
-        }
-        
         return false;
     }
 

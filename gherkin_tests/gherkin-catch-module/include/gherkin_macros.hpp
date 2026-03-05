@@ -3,6 +3,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <fstream>
 #include "gherkin-catch-module.hpp"
 
 class StepRegistry {
@@ -45,11 +46,28 @@ public:
     
     // Автоматическая инициализация при первом вызове
     static void ensureInitialized() {
-        static bool initialized = false;
+        static bool initialized = false;  // Локальная статическая переменная
         if (!initialized) {
-            const char* path = std::getenv("GHERKIN_FEATURES_PATH");
-            if (!path) path = "features";
-            gherkin_bridge::GherkinValidator::instance().init(path);
+            const char* featureFile = std::getenv("GHERKIN_FEATURE_FILE");
+            if (!featureFile) {
+                throw std::runtime_error(
+                    "ERROR: GHERKIN_FEATURE_FILE environment variable not set!\n"
+                    "Usage: export GHERKIN_FEATURE_FILE=jarvis_hull.feature"
+                );
+            }
+
+            const char* featuresPath = std::getenv("GHERKIN_FEATURES_PATH");
+            if (!featuresPath) featuresPath = "features";
+
+            std::string fullPath = std::string(featuresPath) + "/" + featureFile;
+
+            std::ifstream file(fullPath);
+            if (!file.good()) {
+                std::string errorMsg = "ERROR: Feature file not found: " + fullPath;
+                throw std::runtime_error(errorMsg);
+            }
+
+            gherkin_bridge::GherkinValidator::instance().init(fullPath);
             instance().markAllSteps();
             initialized = true;
         }

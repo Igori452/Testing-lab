@@ -1,30 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
+
 #include "gherkin_macros.hpp"
-#include "context/context.hpp"
+#include "context/commonFunction.hpp"
+
 #include <sstream>
 #include <fstream>
 
 using namespace jarvis_test;
-
-// ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
-bool isPointInVector(const Point& p, const std::vector<Point>& vec) {
-    return std::find(vec.begin(), vec.end(), p) != vec.end();
-}
-
-bool arePointsEqual(const Point& a, const Point& b) {
-    const double eps = 1e-8;
-    return std::abs(a.x - b.x) < eps && std::abs(a.y - b.y) < eps;
-}
-
-std::vector<Point> parsePointsFromString(const std::string& str) {
-    std::vector<Point> result;
-    std::istringstream iss(str);
-    double x, y;
-    while (iss >> x >> y) {
-        result.push_back({x, y});
-    }
-    return result;
-}
 
 // ===== РЕГИСТРАЦИЯ ШАГОВ =====
 
@@ -138,7 +120,7 @@ BDD_GIVEN("a set of points with coordinates outside [0,600]:", []() {
     };
 });
 
-BDD_THEN("points outside the range [-10,-10 and 700,700] are filtered out", []() {
+BDD_THEN("points outside the range [0,600] are filtered out", []() {
     std::vector<Point> validPoints;
     for (const auto& p : points) {
         if (p.x >= 0 && p.x <= 600 && p.y >= 0 && p.y <= 600) {
@@ -148,14 +130,9 @@ BDD_THEN("points outside the range [-10,-10 and 700,700] are filtered out", []()
     REQUIRE(validPoints.size() == 3);
 });
 
-BDD_AND("the hull is built only from valid points [100,100], [300,300], [500,500]", []() {
-    REQUIRE(result.success);
-    REQUIRE(result.hull.size() == 3);
-    
-    std::vector<Point> expectedPoints = {{100,100}, {300,300}, {500,500}};
-    for (const auto& p : expectedPoints) {
-        REQUIRE(isPointInVector(p, result.hull));
-    }
+BDD_AND("the algorithm returns an empty hull because points are collinear", []() {
+    REQUIRE(!result.success);
+    REQUIRE(result.hull.size() == 0);
 });
 
 BDD_BUT("the program does not crash", []() {
@@ -228,8 +205,8 @@ TEST_CASE("Jarvis: Identical coordinates", "[jarvis][scenario5]") {
 TEST_CASE("Jarvis: Filtering points", "[jarvis][scenario6]") {
     CALL_GIVEN("a set of points with coordinates outside [0,600]:");
     CALL_WHEN("I run the Jarvis algorithm");
-    CALL_THEN("points outside the range [-10,-10 and 700,700] are filtered out");
-    CALL_AND("the hull is built only from valid points [100,100], [300,300], [500,500]");
+    CALL_THEN("points outside the range [0,600] are filtered out");
+    CALL_AND("the algorithm returns an empty hull because points are collinear");
     CALL_BUT("the program does not crash");
 }
 
