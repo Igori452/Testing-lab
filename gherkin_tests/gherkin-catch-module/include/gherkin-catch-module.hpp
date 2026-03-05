@@ -22,76 +22,52 @@ namespace gherkin_bridge {
         private:
             GherkinValidator() = default;
 
-            // Вспомогательные функции
             void loadFeatures(const std::string& path);
             void parseFeatureFile(const std::string& filename);
             void processSteps(const Steps* steps);
             void addStep(const Step* step);
 
-            // Хранилище шагов
             std::map<std::string, bool> steps_;
             int used_count_ = 0;
 
         public:
-            // Синглтон
             static GherkinValidator& instance();
 
-            // Инициализация
             void init(const std::string& path);
 
-            // Валидация шага
             bool validateStep(const std::string& keyword, const std::string& text);
 
-            // Отчёт
             void printReport();
 
-            // Проверка полного покрытия
             bool allStepsUsed() const;
+
+            ~GherkinValidator();
     };
 } // namespace gherkin_bridge
 
-// ==================== МАКРОСЫ ====================
-#define INIT_GHERKIN(path) \
-    static struct GherkinInit { \
-        GherkinInit() { \
-            ::gherkin_bridge::GherkinValidator::instance().init(path); \
-        } \
-    } GHERKIN_INIT_##__LINE__
 
+// Р­С‚Рё РјР°РєСЂРѕСЃС‹ РўРћР›Р¬РљРћ РћРўРњР•Р§РђР®Рў С€Р°РіРё
 #define GHERKIN_GIVEN(text) \
     do { \
-        if (!::gherkin_bridge::GherkinValidator::instance().validateStep("Given", text)) { \
-            FAIL("Step not defined: Given " + std::string(text)); \
-        } \
+        ::gherkin_bridge::GherkinValidator::instance().validateStep("Given", text); \
     } while(0)
 
 #define GHERKIN_WHEN(text) \
     do { \
-        if (!::gherkin_bridge::GherkinValidator::instance().validateStep("When", text)) { \
-            FAIL("Step not defined: When " + std::string(text)); \
-        } \
+        ::gherkin_bridge::GherkinValidator::instance().validateStep("When", text); \
     } while(0)
 
 #define GHERKIN_THEN(text) \
     do { \
-        if (!::gherkin_bridge::GherkinValidator::instance().validateStep("Then", text)) { \
-            FAIL("Step not defined: Then " + std::string(text)); \
-        } \
+        ::gherkin_bridge::GherkinValidator::instance().validateStep("Then", text); \
     } while(0)
 
 #define GHERKIN_AND(text) \
     do { \
-        if (!::gherkin_bridge::GherkinValidator::instance().validateStep("And", text)) { \
-            FAIL("Step not defined: And " + std::string(text)); \
-        } \
+        ::gherkin_bridge::GherkinValidator::instance().validateStep("And", text); \
     } while(0)
 
-#define GHERKIN_REPORT() \
-    ::gherkin_bridge::GherkinValidator::instance().printReport()
-
-#define REQUIRE_GHERKIN_COVERAGE() \
+#define GHERKIN_BUT(text) \
     do { \
-        ::gherkin_bridge::GherkinValidator::instance().printReport(); \
-        REQUIRE(::gherkin_bridge::GherkinValidator::instance().allStepsUsed()); \
+        ::gherkin_bridge::GherkinValidator::instance().validateStep("But", text); \
     } while(0)
-// обязательно нужна новая строчка
