@@ -75,7 +75,8 @@ size_t getCurrentMemoryUsage() {
 
 enum class Property {
     CLUSTERS,      // кластеры (h маленькое)
-    GRID           // решетка (h большое)
+    GRID,           // решетка (h большое)
+    CIRCLE
 };
 
 std::vector<Point> generateDataset(size_t n, Property prop) {
@@ -112,18 +113,40 @@ std::vector<Point> generateDataset(size_t n, Property prop) {
         }
         
         case Property::GRID: {
-            // Решетка - h большое (все точки на границе)
-            int side = sqrt(n);
+            // Всегда создаем квадратную решетку
+            int side = static_cast<int>(std::ceil(std::sqrt(n)));
+            double step = 1000.0 / (side - 1);
+            
+            pts.clear();
+            pts.reserve(side * side);
+            
+
             for (int i = 0; i < side; ++i) {
                 for (int j = 0; j < side; ++j) {
-                    pts.push_back({double(i * 1000/side), double(j * 1000/side)});
+                    pts.push_back({i * step, j * step});
                 }
             }
-            // Если нужно больше точек, добиваем случайными
-            std::uniform_real_distribution<> dis(0.0, 1000.0);
-            while (pts.size() < n) {
-                pts.push_back({dis(gen), dis(gen)});
+            
+            break;
+        }
+
+        case Property::CIRCLE: {
+            // Всегда создаем квадратную решетку
+            int side = static_cast<int>(std::ceil(std::sqrt(n)));
+            double step = 1000.0 / (side - 1);
+            
+            pts.clear();
+            pts.reserve(side * side);
+            
+
+            for (size_t i = 0; i < n; ++i) {
+                double angle = 2 * M_PI * i / n;
+                pts.push_back({
+                    300 + 200 * cos(angle),  // центр в (300,300), радиус 200
+                    300 + 200 * sin(angle)
+                });
             }
+            
             break;
         }
     }
@@ -447,7 +470,7 @@ BDD_GIVEN("a GRID dataset for Jarvis scaling", [](){
 });
 
 BDD_WHEN("I run Jarvis scaling test on GRID", [](){
-    std::vector<size_t> sizes = {700000, 1100000, 1600000, 2000000};
+    std::vector<size_t> sizes = {700000, 1100000, 1600000, 5000000};
     profiler.setConfig("Jarvis", "GRID");
     profiler.runLoadTest(sizes, Property::GRID);
 });
