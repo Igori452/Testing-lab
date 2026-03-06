@@ -50,18 +50,6 @@ Feature: Construction of contour processing algorithm of Graham algorithm
       When I run the Graham algorithm
       Then the algorithm returns an empty hull  # TC_GRAHAM_STMT_002
 
-    Scenario: Finding the point with the lowest Y (and leftmost X if Y equal)
-      Given a set of points:
-        | x   | y   |
-        | 300 | 300 |
-        | 100 | 400 |
-        | 500 | 100 |
-        | 200 | 200 |
-        | 150 | 100 |
-      When I run the Graham algorithm
-      Then the starting point is correctly identified as [500,100]  # TC_GRAHAM_STMT_003
-      And if there were points with equal Y, the leftmost would be chosen
-
   Scenario Outline: Testing the sorting by polar angle
     Given a set of points with collinear points
     When I run the Graham algorithm

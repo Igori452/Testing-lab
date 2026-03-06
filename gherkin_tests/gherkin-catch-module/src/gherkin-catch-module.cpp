@@ -210,11 +210,6 @@ namespace gherkin_bridge {
                     if (!used) {
                         steps_[step] = true;
                         used_count_++;
-
-                        // Опционально: выводим захваченные значения
-                        for (size_t i = 1; i < matches.size(); ++i) {
-                            std::cout << "     captured: '" << matches[i].str() << "'\n";
-                        }
                     }
                     return true;
                 }

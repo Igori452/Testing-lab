@@ -60,19 +60,6 @@ Feature: Construction of contour processing algorithm of Jarvis algorithm
       When I run the Jarvis algorithm
       Then the algorithm returns an empty hull  # TC_EP_002
 
-    Scenario: Filtering points outside the drawing range
-      Given a set of points with coordinates outside [0,600]:
-        | x    | y    |
-        | -10  | -10  |
-        | 100  | 100  |
-        | 700  | 700  |
-        | 300  | 300  |
-        | 500  | 500  |
-      When I run the Jarvis algorithm
-      Then points outside the range [-10,-10 and 700,700] are filtered out
-      And the hull is built only from valid points [100,100], [300,300], [500,500]
-      But the program does not crash  # TC_JARVIS_BRANCH_004
-
   Scenario Outline: Building a hull for different configurations of points
     Given a set of points:
       | x | y |

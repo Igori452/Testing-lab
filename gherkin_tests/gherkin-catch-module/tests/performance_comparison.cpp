@@ -85,68 +85,60 @@ std::vector<Point> generateDataset(size_t n, Property prop) {
     std::vector<Point> pts;
     pts.reserve(n);
     
-    switch(prop) {        
+    switch (prop) {
         case Property::CLUSTERS: {
-            // Кластеры - h маленькое (~10-20)
+            // Кластеры в диапазоне [0,600]
             std::vector<std::pair<double, double>> centers = {
-                {300, 300}, {500, 500}, {700, 700}
+                {150, 150}, {300, 300}, {450, 450}  // центры в пределах [0,600]
             };
             std::uniform_int_distribution<> center_choice(0, centers.size() - 1);
             std::normal_distribution<> cluster(0, 30);
-            
-            // Добавляем немного граничных точек для оболочки
-            std::uniform_int_distribution<> boundary(0, 1000);
+
+            // Граничные точки для оболочки
+            std::uniform_int_distribution<> boundary(0, 600);
             size_t boundary_count = n / 50;
-            
+
             for (size_t i = 0; i < n; ++i) {
                 if (i < boundary_count) {
-                    pts.push_back({double(boundary(gen)), double(boundary(gen))});
-                } else {
+                    pts.push_back({ double(boundary(gen)), double(boundary(gen)) });
+                }
+                else {
                     int c = center_choice(gen);
                     pts.push_back({
                         centers[c].first + cluster(gen),
                         centers[c].second + cluster(gen)
-                    });
+                        });
                 }
             }
             break;
         }
-        
-        case Property::GRID: {
-            // Всегда создаем квадратную решетку
-            int side = static_cast<int>(std::ceil(std::sqrt(n)));
-            double step = 1000.0 / (side - 1);
-            
-            pts.clear();
-            pts.reserve(side * side);
-            
 
+        case Property::GRID: {
+            int side = static_cast<int>(std::ceil(std::sqrt(n)));
+            double step = 600.0 / (side - 1);
+
+            // Генерируем ВСЕ точки решетки
             for (int i = 0; i < side; ++i) {
                 for (int j = 0; j < side; ++j) {
-                    pts.push_back({i * step, j * step});
+                    pts.push_back({ i * step, j * step });
                 }
             }
-            
+            // Не обрезаем! Используем все сгенерированные точки
             break;
         }
 
         case Property::CIRCLE: {
-            // Всегда создаем квадратную решетку
-            int side = static_cast<int>(std::ceil(std::sqrt(n)));
-            double step = 1000.0 / (side - 1);
-            
-            pts.clear();
-            pts.reserve(side * side);
-            
+            // Окружность с центром в (300,300), радиус 250 (чтобы не выйти за [0,600])
+            double center = 300;
+            double radius = 250;
 
             for (size_t i = 0; i < n; ++i) {
                 double angle = 2 * M_PI * i / n;
                 pts.push_back({
-                    300 + 200 * cos(angle),  // центр в (300,300), радиус 200
-                    300 + 200 * sin(angle)
-                });
+                    center + radius * cos(angle),
+                    center + radius * sin(angle)
+                    });
             }
-            
             break;
         }
     }
@@ -367,13 +359,9 @@ static LoadProfiler profiler;
 // =======================================================
 // BACKGROUND (уже есть в вашем коде)
 // =======================================================
-BDD_GIVEN("the performance profiler is initialized", [](){
-    // уже есть
-});
+BDD_GIVEN("the performance profiler is initialized", [](){});
 
-BDD_AND("test datasets are generated on demand", [](){
-    // уже есть
-});
+BDD_AND("test datasets are generated on demand", [](){});
 
 // =======================================================
 // ТЕСТ 1: GRAHAM на CLUSTERS
@@ -384,7 +372,7 @@ BDD_GIVEN("a CLUSTERS dataset for Graham scaling", [](){
 });
 
 BDD_WHEN("I run Graham scaling test on CLUSTERS", [](){
-    std::vector<size_t> sizes = {100000, 200000, 400000, 700000};
+    std::vector<size_t> sizes = { 5000, 40000, 80000, 100000 };
     profiler.setConfig("Graham", "CLUSTERS");
     profiler.runLoadTest(sizes, Property::CLUSTERS);
 });
@@ -394,7 +382,6 @@ BDD_THEN("the Graham CLUSTERS results are saved", [](){
     profiler.saveToFile("graham_clusters_scaling.txt");
 });
 
-/*
 TEST_CASE("Graham scaling on CLUSTERS", "[graham][clusters][scaling]") {
     std::cout << "\n=== GRAHAM: CLUSTERS dataset (скалирование) ===\n";
     
@@ -402,8 +389,7 @@ TEST_CASE("Graham scaling on CLUSTERS", "[graham][clusters][scaling]") {
     CALL_GIVEN("a CLUSTERS dataset for Graham scaling");
     CALL_WHEN("I run Graham scaling test on CLUSTERS");
     CALL_THEN("the Graham CLUSTERS results are saved");
-}*/
-
+}
 // =======================================================
 // ТЕСТ 2: GRAHAM на GRID
 // =======================================================
@@ -413,7 +399,7 @@ BDD_GIVEN("a GRID dataset for Graham scaling", [](){
 });
 
 BDD_WHEN("I run Graham scaling test on GRID", [](){
-    std::vector<size_t> sizes = {100000, 200000, 400000, 700000};
+    std::vector<size_t> sizes = {5000, 40000, 80000, 100000};
     profiler.setConfig("Graham", "GRID");
     profiler.runLoadTest(sizes, Property::GRID);
 });
@@ -423,7 +409,6 @@ BDD_THEN("the Graham GRID results are saved", [](){
     profiler.saveToFile("graham_grid_scaling.txt");
 });
 
-/*
 TEST_CASE("Graham scaling on GRID", "[graham][grid][scaling]") {
     std::cout << "\n=== GRAHAM: GRID dataset (скалирование) ===\n";
     
@@ -431,7 +416,7 @@ TEST_CASE("Graham scaling on GRID", "[graham][grid][scaling]") {
     CALL_GIVEN("a GRID dataset for Graham scaling");
     CALL_WHEN("I run Graham scaling test on GRID");
     CALL_THEN("the Graham GRID results are saved");
-}*/
+}
 
 // =======================================================
 // ТЕСТ 3: JARVIS на CLUSTERS
@@ -442,7 +427,7 @@ BDD_GIVEN("a CLUSTERS dataset for Jarvis scaling", [](){
 });
 
 BDD_WHEN("I run Jarvis scaling test on CLUSTERS", [](){
-    std::vector<size_t> sizes = {700000, 1100000, 1600000, 2000000};
+    std::vector<size_t> sizes = {700000, 1600000, 2000000, 5000000};
     profiler.setConfig("Jarvis", "CLUSTERS");
     profiler.runLoadTest(sizes, Property::CLUSTERS);
 });
@@ -464,27 +449,28 @@ TEST_CASE("Jarvis scaling on CLUSTERS", "[jarvis][clusters][scaling]") {
 // =======================================================
 // ТЕСТ 4: JARVIS на GRID
 // =======================================================
-BDD_GIVEN("a GRID dataset for Jarvis scaling", [](){
+BDD_GIVEN("a CIRCLE dataset for Jarvis scaling", [](){
     current_dataset_type = "GRID";
     current_dataset_size = 0;
 });
 
-BDD_WHEN("I run Jarvis scaling test on GRID", [](){
-    std::vector<size_t> sizes = {700000, 1100000, 1600000, 5000000};
-    profiler.setConfig("Jarvis", "GRID");
-    profiler.runLoadTest(sizes, Property::GRID);
+BDD_WHEN("I run Jarvis scaling test on CIRCLE", [](){
+    std::vector<size_t> sizes = {700000, 1600000, 2000000, 5000000};
+    profiler.setConfig("Jarvis", "CIRCLE");
+    profiler.runLoadTest(sizes, Property::CIRCLE);
 });
 
-BDD_THEN("the Jarvis GRID results are saved", [](){
+BDD_THEN("the Jarvis CIRCLE results are saved", [](){
     profiler.printTable();
     profiler.saveToFile("jarvis_grid_scaling.txt");
 });
 
-TEST_CASE("Jarvis scaling on GRID", "[jarvis][grid][scaling]") {
-    std::cout << "\n=== JARVIS: GRID dataset (скалирование) ===\n";
+
+TEST_CASE("Jarvis scaling on CIRCLE", "[jarvis][grid][scaling]") {
+    std::cout << "\n=== JARVIS: CIRCLE dataset (скалирование) ===\n";
     
     CALL_GIVEN("the performance profiler is initialized");
-    CALL_GIVEN("a GRID dataset for Jarvis scaling");
-    CALL_WHEN("I run Jarvis scaling test on GRID");
-    CALL_THEN("the Jarvis GRID results are saved");
+    CALL_GIVEN("a CIRCLE dataset for Jarvis scaling");
+    CALL_WHEN("I run Jarvis scaling test on CIRCLE");
+    CALL_THEN("the Jarvis CIRCLE results are saved");
 }

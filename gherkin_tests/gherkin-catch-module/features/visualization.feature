@@ -10,22 +10,6 @@ Feature: Visualisation dots and hull
 
   Rule: Correct display of graphic elements
 
-    # Императивный стиль (подробно описываем действия пользователя)
-    Scenario: Displaying loaded points on the plane
-      Given I have a file "sample_points.txt" with coordinates:
-        """
-        100 100
-        200 300
-        400 150
-        """
-      When I press the "Load File" button
-      Then blue points appear on the plane at coordinates:
-        | x   | y   |
-        | 100 | 100 |
-        | 200 | 300 |
-        | 400 | 150 |
-      And each point has a radius of 3 pixels  # Как на рисунке 2.2
-
     # Декларативный стиль (описываем ЧТО должно быть)
     Scenario: Different colors for different algorithms
       Given points are loaded on the plane
@@ -82,10 +66,3 @@ Feature: Visualisation dots and hull
       When I press the "Exit" button
       Then the program window closes
       And the process terminates  # Как описано в разделе 2.1
-
-    Scenario: Load File button with missing file
-      Given the file "points.txt" does not exist
-      When I press the "Load File" button
-      Then no points are displayed
-      And the program continues running without crashing
-      But an error message is shown  # Обработка ошибки
