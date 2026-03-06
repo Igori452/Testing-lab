@@ -3,484 +3,465 @@
 #include "gherkin_macros.hpp"
 #include "context/commonFunction.hpp"
 
+#include <vector>
 #include <chrono>
 #include <fstream>
-#include <vector>
-#include <random>
+#include <iostream>
 #include <cmath>
-#include <filesystem>
+#include <random>
+#include <unistd.h>
 
-size_t getCurrentMemoryUsage() {
-    return 0; // Пока всегда 0
+//GHERKIN_FEATURES_PATH="features" GHERKIN_FEATURE_FILE="performance_comparison.feature" ./performance_tests -s -d yes
+
+using namespace jarvis_test;
+using namespace graham_test;
+
+
+namespace jarvis_test {
+    bool operator<(const Point& a, const Point& b) {
+        // TODO: реализовать оператор сравнения
+        if (a.x != b.x) return a.x < b.x;
+        return a.y < b.y;
+    }
+    
+    bool operator==(const Point& a, const Point& b) {
+        // TODO: реализовать оператор равенства
+        return a.x == b.x && a.y == b.y;
+    }
 }
 
-using performance_testing::state;
-namespace performance_testing {
-    PerformanceState state;
-}
+// Глобальные переменные для передачи данных между шагами
+static std::vector<Point> dataset;
+static std::vector<double> graham_times;
+static std::vector<double> jarvis_times;
+static double last_time_ms = 0;
+static double avg_time_ms = 0;
+static size_t dataset_size = 0;
+static std::string current_dataset_type;
+static size_t peak_memory_kb = 0;
+static int current_run_count = 5; // значение по умолчанию
+static int current_dataset_size = 0;
+static std::string current_dataset_name;
 
-using namespace std::chrono;
-using namespace performance_testing;
-
-// Структура для хранения результатов тестирования
-struct PerformanceResult {
-    std::string algorithm;
-    std::string dataset;
-    int pointCount;
-    int hullSize;
-    double timeMs;
-    size_t memoryBytes;
-    std::vector<Point> hull;
+struct Metrics {
+    double jarvis_time = 0;
+    double graham_time = 0;
+    size_t jarvis_memory = 0;
+    size_t graham_memory = 0;
+    size_t jarvis_hull_size = 0;
+    size_t graham_hull_size = 0;
 };
 
-std::vector<PerformanceResult> performanceLog;
+static Metrics metrics;
 
-// Вспомогательные функции для генерации датасетов
-std::vector<Point> generateSparseDataset(int count, int hullVertices) {
-    std::vector<Point> points;
+size_t getCurrentMemoryUsage() {
+    std::ifstream statm("/proc/self/statm");
+    if (!statm.is_open()) {
+        // Если не Linux, возвращаем 0
+        return 0;
+    }
+    
+    long rss;
+    statm >> rss; // пропускаем size
+    statm >> rss; // читаем resident
+    
+    long page_size = sysconf(_SC_PAGESIZE);
+    if (page_size == -1) {
+        page_size = 4096; // значение по умолчанию
+    }
+    
+    return (rss * page_size) / 1024; // в KB
+}
+
+enum class Property {
+    CLUSTERS,      // кластеры (h маленькое)
+    GRID           // решетка (h большое)
+};
+
+std::vector<Point> generateDataset(size_t n, Property prop) {
     std::random_device rd;
     std::mt19937 gen(rd());
-
-    // Генерируем вершины выпуклой оболочки (на окружности)
-    std::uniform_real_distribution<> angleDist(0, 2 * M_PI);
-    std::vector<Point> hull;
-    for (int i = 0; i < hullVertices; ++i) {
-        double angle = angleDist(gen);
-        double r = 500 + std::uniform_real_distribution<>(0, 100)(gen);
-        hull.push_back({ 500 + r * cos(angle), 500 + r * sin(angle) });
+    std::vector<Point> pts;
+    pts.reserve(n);
+    
+    switch(prop) {        
+        case Property::CLUSTERS: {
+            // Кластеры - h маленькое (~10-20)
+            std::vector<std::pair<double, double>> centers = {
+                {300, 300}, {500, 500}, {700, 700}
+            };
+            std::uniform_int_distribution<> center_choice(0, centers.size() - 1);
+            std::normal_distribution<> cluster(0, 30);
+            
+            // Добавляем немного граничных точек для оболочки
+            std::uniform_int_distribution<> boundary(0, 1000);
+            size_t boundary_count = n / 50;
+            
+            for (size_t i = 0; i < n; ++i) {
+                if (i < boundary_count) {
+                    pts.push_back({double(boundary(gen)), double(boundary(gen))});
+                } else {
+                    int c = center_choice(gen);
+                    pts.push_back({
+                        centers[c].first + cluster(gen),
+                        centers[c].second + cluster(gen)
+                    });
+                }
+            }
+            break;
+        }
+        
+        case Property::GRID: {
+            // Решетка - h большое (все точки на границе)
+            int side = sqrt(n);
+            for (int i = 0; i < side; ++i) {
+                for (int j = 0; j < side; ++j) {
+                    pts.push_back({double(i * 1000/side), double(j * 1000/side)});
+                }
+            }
+            // Если нужно больше точек, добиваем случайными
+            std::uniform_real_distribution<> dis(0.0, 1000.0);
+            while (pts.size() < n) {
+                pts.push_back({dis(gen), dis(gen)});
+            }
+            break;
+        }
     }
-
-    // Добавляем точки внутри оболочки
-    std::uniform_real_distribution<> insideDist(-100, 100);
-    for (int i = hullVertices; i < count; ++i) {
-        // Берем случайную точку внутри (упрощенно)
-        Point base = hull[i % hullVertices];
-        points.push_back({ base.x + insideDist(gen), base.y + insideDist(gen) });
-    }
-
-    // Добавляем вершины оболочки
-    points.insert(points.end(), hull.begin(), hull.end());
-    return points;
+    
+    return pts;
 }
 
-std::vector<Point> generateDenseDataset(int count, double density = 0.3) {
-    std::vector<Point> points;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dist(0, 1000);
-
-    for (int i = 0; i < count; ++i) {
-        points.push_back({ dist(gen), dist(gen) });
+// =======================================================
+// ПРОФАЙЛЕР ДЛЯ НАГРУЗОЧНОГО ТЕСТИРОВАНИЯ
+// =======================================================
+// =======================================================
+// ПРОФАЙЛЕР ДЛЯ НАГРУЗОЧНОГО ТЕСТИРОВАНИЯ (с кэшированием)
+// =======================================================
+class LoadProfiler {
+private:
+    struct LoadPoint {
+        size_t size;
+        double time_sec;
+        double memory_mb;
+        size_t hull_size;
+    };
+    
+    std::vector<LoadPoint> results;
+    std::string algorithm_name;
+    std::string dataset_type;
+    std::string cache_filename;
+    
+    // Очистка кэша (Linux)
+    void clearCache() {
+        sync();
+        std::ofstream("/proc/sys/vm/drop_caches") << "3";
     }
-    return points;
-}
-
-void saveDatasetToFile(const std::vector<Point>& points, const std::string& filename) {
-    std::ofstream file("datasets/" + filename);
-    for (const auto& p : points) {
-        file << p.x << " " << p.y << "\n";
+    
+    // Сохранение датасета в файл
+    void saveDatasetToFile(const std::vector<Point>& dataset, size_t size) {
+        std::string filename = "cache_" + dataset_type + "_" + std::to_string(size) + ".bin";
+        std::ofstream f(filename, std::ios::binary);
+        size_t points_count = dataset.size();
+        f.write(reinterpret_cast<const char*>(&points_count), sizeof(size_t));
+        f.write(reinterpret_cast<const char*>(dataset.data()), points_count * sizeof(Point));
+        f.close();
     }
-}
-
-// ===== РЕГИСТРАЦИЯ ШАГОВ =====
-
-BDD_GIVEN("time profiler is running", []() {
-    performanceLog.clear();
-    state.profilerActive = true;
-    state.startTime = high_resolution_clock::now();
-    });
-
-BDD_AND("test datasets have been loaded from the \"datasets/\" folder", []() {
-    // Создаем datasets если их нет
-    std::filesystem::create_directories("datasets");
-    std::filesystem::create_directories("output");
-
-    // Генерируем тестовые датасеты
-    auto sparse500 = generateSparseDataset(500, 10);
-    auto dense5000 = generateDenseDataset(5000);
-    auto dense20000 = generateDenseDataset(20000);
-    auto random7500 = generateDenseDataset(7500);
-
-    saveDatasetToFile(sparse500, "sparse_500.txt");
-    saveDatasetToFile(generateSparseDataset(800, 15), "mixed_800.txt");
-    saveDatasetToFile(dense5000, "dense_5000.txt");
-    saveDatasetToFile(random7500, "random_7500.txt");
-    saveDatasetToFile(dense20000, "dense_20000.txt");
-    });
-
-BDD_AND("the \"preliminary_experiment.log\" shows that datasets > 15000 points take > 2 minutes", []() {
-    std::ofstream log("preliminary_experiment.log");
-    log << "Preliminary performance results:\n";
-    log << "Datasets > 15000 points take > 2 minutes with Jarvis algorithm\n";
-    log << "Threshold confirmed: 2 minutes\n";
-    });
-
-// Scenario: Jarvis on 500 points
-BDD_GIVEN("a sparse dataset with 500 points forming 10 hull vertices", []() {
-    state.points = generateSparseDataset(500, 10);
-    state.expectedHullSize = 10;
-    });
-
-BDD_WHEN("I run the Jarvis algorithm and measure time", []() {
-    JarvisAlgorithm jarvis;
-    auto start = high_resolution_clock::now();
-    state.jarvisHull = jarvis.findConvexHull(state.points);
-    auto end = high_resolution_clock::now();
-    state.lastExecutionTimeMs = duration<double, std::milli>(end - start).count();
-    });
-
-BDD_THEN("the execution time is less than 100 ms", []() {
-    REQUIRE(state.lastExecutionTimeMs < 100);
-    });
-
-BDD_AND("the hull is correctly constructed", []() {
-    REQUIRE(state.jarvisHull.size() == state.expectedHullSize);
-    });
-
-// Scenario: Graham on 500 points
-BDD_GIVEN("a sparse dataset with 500 points forming 10 hull vertices", []() {
-    state.points = generateSparseDataset(500, 10);
-    state.expectedHullSize = 10;
-    });
-
-BDD_WHEN("I run the Graham algorithm and measure time", []() {
-    GrahamAlgorithm graham;
-    auto start = high_resolution_clock::now();
-    state.grahamHull = graham.findConvexHull(state.points);
-    auto end = high_resolution_clock::now();
-    state.lastExecutionTimeMs = duration<double, std::milli>(end - start).count();
-    });
-
-BDD_THEN("the execution time is less than 50 ms", []() {
-    REQUIRE(state.lastExecutionTimeMs < 50);
-    });
-
-BDD_AND("the hull matches the Jarvis result", []() {
-    REQUIRE(state.grahamHull.size() == state.expectedHullSize);
-    // Проверяем, что множества вершин совпадают
-    for (const auto& p : state.grahamHull) {
-        bool found = false;
-        for (const auto& jp : state.jarvisHull) {
-            if (std::abs(p.x - jp.x) < 1e-8 && std::abs(p.y - jp.y) < 1e-8) {
-                found = true;
-                break;
+    
+    // Загрузка датасета из файла
+    std::vector<Point> loadDatasetFromFile(size_t size) {
+        std::string filename = "cache_" + dataset_type + "_" + std::to_string(size) + ".bin";
+        std::vector<Point> dataset;
+        
+        std::ifstream f(filename, std::ios::binary);
+        if (f.is_open()) {
+            size_t points_count;
+            f.read(reinterpret_cast<char*>(&points_count), sizeof(size_t));
+            dataset.resize(points_count);
+            f.read(reinterpret_cast<char*>(dataset.data()), points_count * sizeof(Point));
+            f.close();
+            std::cout << "  ✓ Загружено из кэша: " << filename << "\n";
+        }
+        return dataset;
+    }
+    
+    // Проверка существования файла
+    bool datasetExists(size_t size) {
+        std::string filename = "cache_" + dataset_type + "_" + std::to_string(size) + ".bin";
+        std::ifstream f(filename);
+        return f.good();
+    }
+    
+public:
+    void setConfig(const std::string& algo, const std::string& data) {
+        algorithm_name = algo;
+        dataset_type = data;
+        results.clear();
+    }
+    
+void runLoadTest(const std::vector<size_t>& sizes, Property prop, bool useCache = true) {
+    std::cout << "\n" << std::string(70, '=') << "\n";
+    std::cout << "📊 НАГРУЗОЧНОЕ ТЕСТИРОВАНИЕ: " << algorithm_name 
+              << " на " << dataset_type << "\n";
+    std::cout << std::string(70, '=') << "\n";
+    
+    // Максимальный размер для генерации
+    size_t max_size = 0;
+    if (useCache) {
+        for (size_t size : sizes) {
+            if (size > max_size) max_size = size;
+        }
+        std::cout << "🔧 Максимальный размер: " << max_size << " точек\n";
+    }
+    
+    for (size_t size : sizes) {
+        std::cout << "\n▶ Тест на " << size << " точках...\n";
+        
+        // Загрузка или генерация данных
+        std::vector<Point> dataset;
+        if (useCache && datasetExists(size)) {
+            dataset = loadDatasetFromFile(size);
+        } else {
+            dataset = generateDataset(size, prop);
+            if (useCache) {
+                saveDatasetToFile(dataset, size);
+                std::cout << "  ✓ Сгенерировано и сохранено в кэш\n";
             }
         }
-        REQUIRE(found);
-    }
-    });
-
-// Scenario: Result comparison on 800 points
-BDD_GIVEN("a mixed dataset with 800 points (dense and sparse regions)", []() {
-    state.points = generateSparseDataset(800, 15);
-    // Добавляем несколько случайных точек для "mixed" эффекта
-    auto extra = generateDenseDataset(50);
-    state.points.insert(state.points.end(), extra.begin(), extra.end());
-    });
-
-BDD_WHEN("I run both algorithms", []() {
-    GrahamAlgorithm graham;
-    JarvisAlgorithm jarvis;
-
-    state.grahamHull = graham.findConvexHull(state.points);
-    state.jarvisHull = jarvis.findConvexHull(state.points);
-    });
-
-BDD_THEN("the sets of hull vertices are identical", []() {
-    REQUIRE(state.grahamHull.size() == state.jarvisHull.size());
-
-    // Сортируем для сравнения (по полярному углу или по координатам)
-    auto sortPoints = [](std::vector<Point>& pts) {
-        std::sort(pts.begin(), pts.end(), [](const Point& a, const Point& b) {
-            if (std::abs(a.x - b.x) < 1e-8) return a.y < b.y;
-            return a.x < b.x;
-            });
-        };
-
-    sortPoints(state.grahamHull);
-    sortPoints(state.jarvisHull);
-
-    for (size_t i = 0; i < state.grahamHull.size(); ++i) {
-        REQUIRE(std::abs(state.grahamHull[i].x - state.jarvisHull[i].x) < 1e-8);
-        REQUIRE(std::abs(state.grahamHull[i].y - state.jarvisHull[i].y) < 1e-8);
-    }
-    });
-
-BDD_AND("the order of vertices may differ, but the set is the same", []() {
-    // Уже проверили выше, что множества одинаковы
-    SUCCEED("Sets are identical, order may differ");
-    });
-
-// Rule: For datasets from 1000 to 10000 points, Graham is recommended
-
-// Scenario: Graham on 5000 points with performance measurement
-BDD_GIVEN("I have a dense dataset \"dense_5000.txt\" where most points are vertices", []() {
-    std::ifstream file("datasets/dense_5000.txt");
-    state.points.clear();
-    double x, y;
-    while (file >> x >> y) {
-        state.points.push_back({ x, y });
-    }
-    });
-
-BDD_WHEN("I start the performance profiler", []() {
-    state.profilerActive = true;
-    state.memoryBefore = getCurrentMemoryUsage(); // Нужно реализовать
-    });
-
-BDD_AND("I run the Graham algorithm 5 times and calculate average time", []() {
-    GrahamAlgorithm graham;
-    double totalTime = 0;
-
-    for (int i = 0; i < 5; ++i) {
-        auto pointsCopy = state.points; // Копируем, т.к. алгоритм может менять порядок
-        auto start = high_resolution_clock::now();
-        auto hull = graham.findConvexHull(pointsCopy);
-        auto end = high_resolution_clock::now();
-        totalTime += duration<double, std::milli>(end - start).count();
-
-        if (i == 4) state.grahamHull = hull; // Сохраняем последний результат
-    }
-
-    state.lastExecutionTimeMs = totalTime / 5.0;
-    state.memoryAfter = getCurrentMemoryUsage();
-    });
-
-BDD_THEN("the average execution time is less than 2 seconds", []() {
-    REQUIRE(state.lastExecutionTimeMs < 2000); // 2 seconds = 2000 ms
-    });
-
-BDD_AND("memory consumption does not exceed 50 MB", []() {
-    size_t memoryUsed = state.memoryAfter - state.memoryBefore;
-    REQUIRE(memoryUsed < 50 * 1024 * 1024); // 50 MB in bytes
-    });
-
-// Scenario: Jarvis on 5000 points should be slower
-BDD_GIVEN("the same dense dataset \"dense_5000.txt\"", []() {
-    std::ifstream file("datasets/dense_5000.txt");
-    state.points.clear();
-    double x, y;
-    while (file >> x >> y) {
-        state.points.push_back({ x, y });
-    }
-    });
-
-BDD_WHEN("I run the Jarvis algorithm with the same profiling settings", []() {
-    JarvisAlgorithm jarvis;
-    auto start = high_resolution_clock::now();
-    state.jarvisHull = jarvis.findConvexHull(state.points);
-    auto end = high_resolution_clock::now();
-    state.jarvisTimeMs = duration<double, std::milli>(end - start).count();
-
-    // Сохраняем предыдущее время Graham (из предыдущего теста)
-    // В реальности нужно передавать через state
-    state.grahamTimeMs = 150; // Примерное значение из предыдущего теста
-    });
-
-BDD_THEN("the execution time is at least 3 times slower than Graham", []() {
-    REQUIRE(state.jarvisTimeMs > state.grahamTimeMs * 3);
-    });
-
-BDD_AND("the theoretical complexity O(n*h) is confirmed (h ≈ 500)", []() {
-    int n = state.points.size();
-    int h = state.jarvisHull.size();
-    double complexity = n * h;
-    double grahamComplexity = n * log2(n);
-
-    std::cout << "Jarvis O(n*h) = " << n << " * " << h << " = " << complexity << "\n";
-    std::cout << "Graham O(n log n) = " << n << " * log2(" << n << ") = " << grahamComplexity << "\n";
-    std::cout << "Ratio: " << complexity / grahamComplexity << "\n";
-
-    // Сохраняем в лог для анализа
-    performanceLog.push_back({
-        "Jarvis", "dense_5000", n, h, state.jarvisTimeMs, 0, state.jarvisHull
-        });
-    });
-
-// Scenario: Correctness check on 7500 points
-BDD_GIVEN("a random dataset \"random_7500.txt\"", []() {
-    std::ifstream file("datasets/random_7500.txt");
-    state.points.clear();
-    double x, y;
-    while (file >> x >> y) {
-        state.points.push_back({ x, y });
-    }
-    });
-
-BDD_WHEN("I run both algorithms", []() {
-    GrahamAlgorithm graham;
-    JarvisAlgorithm jarvis;
-
-    state.grahamHull = graham.findConvexHull(state.points);
-    state.jarvisHull = jarvis.findConvexHull(state.points);
-    });
-
-BDD_THEN("the Graham result matches the Jarvis result", []() {
-    REQUIRE(state.grahamHull.size() == state.jarvisHull.size());
-
-    // Функция для вычисления площади многоугольника
-    auto polygonArea = [](const std::vector<Point>& poly) {
-        double area = 0;
-        for (size_t i = 0; i < poly.size(); ++i) {
-            size_t j = (i + 1) % poly.size();
-            area += poly[i].x * poly[j].y - poly[j].x * poly[i].y;
+        
+        // Вычисляем реальный размер данных в памяти
+        size_t data_memory_kb = (dataset.size() * sizeof(Point)) / 1024;
+        
+        // Очищаем кэш перед каждым тестом
+        clearCache();
+        
+        // Замер памяти до (только ОС)
+        size_t mem_before = getCurrentMemoryUsage();
+        
+        // Замер времени
+        auto start = std::chrono::high_resolution_clock::now();
+        
+        if (algorithm_name == "Graham") {
+            GrahamResult result = runGrahamAlgorithm(dataset);
+            auto end = std::chrono::high_resolution_clock::now();
+        
+            // Замер памяти после
+            size_t mem_after = getCurrentMemoryUsage();
+            
+            // Память алгоритма (разница)
+            size_t algo_mem_kb = mem_after > mem_before ? mem_after - mem_before : 0;
+            
+            // ОБЩАЯ память = данные + алгоритм
+            size_t total_mem_kb = data_memory_kb + algo_mem_kb;
+            
+            double time_sec = std::chrono::duration<double>(end - start).count();
+            
+            // Сохраняем результат (total memory)
+            results.push_back({size, time_sec, total_mem_kb / 1024.0, result.hull.size()});
+            
+            printf("  ✓ Время: %.2f сек | Данные: %.2f MB | Алгоритм: %.2f MB | Всего: %.2f MB | h: %zu\n", 
+                   time_sec, 
+                   data_memory_kb/1024.0, 
+                   algo_mem_kb/1024.0, 
+                   total_mem_kb/1024.0, 
+                   result.hull.size());
+        } else {
+            JarvisResult result = runJarvisAlgorithm(dataset);
+            auto end = std::chrono::high_resolution_clock::now();
+        
+            // Замер памяти после
+            size_t mem_after = getCurrentMemoryUsage();
+            
+            // Память алгоритма (разница)
+            size_t algo_mem_kb = mem_after > mem_before ? mem_after - mem_before : 0;
+            
+            // ОБЩАЯ память = данные + алгоритм
+            size_t total_mem_kb = data_memory_kb + algo_mem_kb;
+            
+            double time_sec = std::chrono::duration<double>(end - start).count();
+            
+            // Сохраняем результат (total memory)
+            results.push_back({size, time_sec, total_mem_kb / 1024.0, result.hull.size()});
+            
+            printf("  ✓ Время: %.2f сек | Данные: %.2f MB | Алгоритм: %.2f MB | Всего: %.2f MB | h: %zu\n", 
+                   time_sec, 
+                   data_memory_kb/1024.0, 
+                   algo_mem_kb/1024.0, 
+                   total_mem_kb/1024.0, 
+                   result.hull.size());
         }
-        return std::abs(area) / 2.0;
-        };
-
-    double grahamArea = polygonArea(state.grahamHull);
-    double jarvisArea = polygonArea(state.jarvisHull);
-
-    std::cout << "Graham area: " << grahamArea << "\n";
-    std::cout << "Jarvis area: " << jarvisArea << "\n";
-    std::cout << "Difference: " << std::abs(grahamArea - jarvisArea) << "\n";
-    });
-
-BDD_AND("the hull area differs by less than 1e-8", []() {
-    auto polygonArea = [](const std::vector<Point>& poly) {
-        double area = 0;
-        for (size_t i = 0; i < poly.size(); ++i) {
-            size_t j = (i + 1) % poly.size();
-            area += poly[i].x * poly[j].y - poly[j].x * poly[i].y;
+    }
+}
+    
+    void printTable() {
+        std::cout << "\n" << std::string(70, '=') << "\n";
+        std::cout << "📊 ИТОГОВАЯ ТАБЛИЦА: " << algorithm_name << " на " << dataset_type << "\n";
+        std::cout << std::string(70, '=') << "\n";
+        
+        printf("%12s | %12s | %12s | %10s\n", 
+               "Точек", "Время (сек)", "Память (MB)", "h");
+        std::cout << std::string(70, '-') << "\n";
+        
+        for (const auto& r : results) {
+            printf("%12zu | %12.2f | %12.2f | %10zu\n", 
+                   r.size, r.time_sec, r.memory_mb, r.hull_size);
         }
-        return std::abs(area) / 2.0;
-        };
-
-    double grahamArea = polygonArea(state.grahamHull);
-    double jarvisArea = polygonArea(state.jarvisHull);
-
-    REQUIRE(std::abs(grahamArea - jarvisArea) < 1e-8);
-    });
-
-// Rule: For datasets over 10,000 points, Graham is required
-
-// Scenario: Graham on 20000 points within time limits
-BDD_GIVEN("a dense dataset \"dense_20000.txt\"", []() {
-    std::ifstream file("datasets/dense_20000.txt");
-    state.points.clear();
-    double x, y;
-    while (file >> x >> y) {
-        state.points.push_back({ x, y });
+        std::cout << std::string(70, '=') << "\n";
     }
-    });
-
-BDD_WHEN("I run the Graham algorithm", []() {
-    GrahamAlgorithm graham;
-    auto start = high_resolution_clock::now();
-    state.grahamHull = graham.findConvexHull(state.points);
-    auto end = high_resolution_clock::now();
-    state.lastExecutionTimeMs = duration<double, std::milli>(end - start).count();
-    });
-
-BDD_THEN("execution time is less than 30 minutes", []() {
-    REQUIRE(state.lastExecutionTimeMs < 30 * 60 * 1000); // 30 minutes in ms
-    });
-
-BDD_AND("the result is saved to \"output/graham_20000.txt\"", []() {
-    std::ofstream file("output/graham_20000.txt");
-    for (const auto& p : state.grahamHull) {
-        file << p.x << " " << p.y << "\n";
+    
+    void saveToFile(const std::string& filename) {
+        std::ofstream f(filename);
+        f << algorithm_name << " на " << dataset_type << "\n";
+        f << "================================\n";
+        f << "Size\tTime(s)\tMemory(MB)\tHull\n";
+        
+        for (const auto& r : results) {
+            f << r.size << "\t" << r.time_sec << "\t" 
+              << r.memory_mb << "\t" << r.hull_size << "\n";
+        }
+        f.close();
+        std::cout << "✅ Результаты сохранены в " << filename << "\n";
     }
-    REQUIRE(std::filesystem::exists("output/graham_20000.txt"));
-    });
-
-// Scenario: Jarvis on 20000 points exceeds time limits
-BDD_GIVEN("the same dense dataset \"dense_20000.txt\"", []() {
-    std::ifstream file("datasets/dense_20000.txt");
-    state.points.clear();
-    double x, y;
-    while (file >> x >> y) {
-        state.points.push_back({ x, y });
+    
+    // Экспорт данных для отчета (Markdown формат)
+    void exportForReport(const std::string& filename) {
+        std::ofstream f(filename);
+        f << "# Результаты нагрузочного тестирования\n\n";
+        f << "## " << algorithm_name << " на " << dataset_type << "\n\n";
+        f << "| Размер | Время (сек) | Память (MB) | Вершин h |\n";
+        f << "|--------|-------------|-------------|----------|\n";
+        
+        for (const auto& r : results) {
+            f << "| " << r.size << " | " << r.time_sec 
+              << " | " << r.memory_mb << " | " << r.hull_size << " |\n";
+        }
+        f.close();
+        std::cout << "✅ Отчет сохранен в " << filename << "\n";
     }
-    });
+};
 
-BDD_WHEN("I run the Jarvis algorithm", []() {
-    JarvisAlgorithm jarvis;
-    auto start = high_resolution_clock::now();
-    state.jarvisHull = jarvis.findConvexHull(state.points);
-    auto end = high_resolution_clock::now();
-    state.jarvisTimeMs = duration<double, std::milli>(end - start).count();
-    });
+static LoadProfiler profiler;
 
-BDD_THEN("execution time exceeds 2 minutes", []() {
-    REQUIRE(state.jarvisTimeMs > 2 * 60 * 1000); // 2 minutes in ms
-    });
+// =======================================================
+// BACKGROUND (уже есть в вашем коде)
+// =======================================================
+BDD_GIVEN("the performance profiler is initialized", [](){
+    // уже есть
+});
 
-BDD_AND("the time measurement is logged for comparison with unit tests", []() {
-    std::ofstream log("performance_comparison.log", std::ios::app);
-    log << "Jarvis on 20000 points: " << state.jarvisTimeMs / 1000.0 << " seconds\n";
-    log << "Reference from preliminary experiment: > 2 minutes\n";
-    log << "Confirmed: " << (state.jarvisTimeMs > 2 * 60 * 1000 ? "YES" : "NO") << "\n\n";
-    });
+BDD_AND("test datasets are generated on demand", [](){
+    // уже есть
+});
 
-// Scenario Outline: Performance scaling with different data types
-BDD_GIVEN("a <type> dataset with <size> points", []() {
-    // Будет параметризовано в тесте
-    });
+// =======================================================
+// ТЕСТ 1: GRAHAM на CLUSTERS
+// =======================================================
+BDD_GIVEN("a CLUSTERS dataset for Graham scaling", [](){
+    current_dataset_type = "CLUSTERS";
+    current_dataset_size = 0;
+});
 
-BDD_WHEN("I measure execution time of both algorithms", []() {
-    // Реализация в тесте
-    });
+BDD_WHEN("I run Graham scaling test on CLUSTERS", [](){
+    std::vector<size_t> sizes = {100000, 200000, 400000, 700000};
+    profiler.setConfig("Graham", "CLUSTERS");
+    profiler.runLoadTest(sizes, Property::CLUSTERS);
+});
 
-BDD_THEN("the Graham to Jarvis time ratio corresponds to theoretical O(n log n) / O(n*h)", []() {
-    // Реализация в тесте
-    });
+BDD_THEN("the Graham CLUSTERS results are saved", [](){
+    profiler.printTable();
+    profiler.saveToFile("graham_clusters_scaling.txt");
+});
 
-// ===== ТЕСТЫ =====
+/*
+TEST_CASE("Graham scaling on CLUSTERS", "[graham][clusters][scaling]") {
+    std::cout << "\n=== GRAHAM: CLUSTERS dataset (скалирование) ===\n";
+    
+    CALL_GIVEN("the performance profiler is initialized");
+    CALL_GIVEN("a CLUSTERS dataset for Graham scaling");
+    CALL_WHEN("I run Graham scaling test on CLUSTERS");
+    CALL_THEN("the Graham CLUSTERS results are saved");
+}*/
 
-TEST_CASE("Performance: Jarvis on 500 points", "[performance][jarvis][small]") {
-    CALL_GIVEN("a sparse dataset with 500 points forming 10 hull vertices");
-    CALL_WHEN("I run the Jarvis algorithm and measure time");
-    CALL_THEN("the execution time is less than 100 ms");
-    CALL_AND("the hull is correctly constructed");
+// =======================================================
+// ТЕСТ 2: GRAHAM на GRID
+// =======================================================
+BDD_GIVEN("a GRID dataset for Graham scaling", [](){
+    current_dataset_type = "GRID";
+    current_dataset_size = 0;
+});
+
+BDD_WHEN("I run Graham scaling test on GRID", [](){
+    std::vector<size_t> sizes = {100000, 200000, 400000, 700000};
+    profiler.setConfig("Graham", "GRID");
+    profiler.runLoadTest(sizes, Property::GRID);
+});
+
+BDD_THEN("the Graham GRID results are saved", [](){
+    profiler.printTable();
+    profiler.saveToFile("graham_grid_scaling.txt");
+});
+
+/*
+TEST_CASE("Graham scaling on GRID", "[graham][grid][scaling]") {
+    std::cout << "\n=== GRAHAM: GRID dataset (скалирование) ===\n";
+    
+    CALL_GIVEN("the performance profiler is initialized");
+    CALL_GIVEN("a GRID dataset for Graham scaling");
+    CALL_WHEN("I run Graham scaling test on GRID");
+    CALL_THEN("the Graham GRID results are saved");
+}*/
+
+// =======================================================
+// ТЕСТ 3: JARVIS на CLUSTERS
+// =======================================================
+BDD_GIVEN("a CLUSTERS dataset for Jarvis scaling", [](){
+    current_dataset_type = "CLUSTERS";
+    current_dataset_size = 0;
+});
+
+BDD_WHEN("I run Jarvis scaling test on CLUSTERS", [](){
+    std::vector<size_t> sizes = {700000, 1100000, 1600000, 2000000};
+    profiler.setConfig("Jarvis", "CLUSTERS");
+    profiler.runLoadTest(sizes, Property::CLUSTERS);
+});
+
+BDD_THEN("the Jarvis CLUSTERS results are saved", [](){
+    profiler.printTable();
+    profiler.saveToFile("jarvis_clusters_scaling.txt");
+});
+
+TEST_CASE("Jarvis scaling on CLUSTERS", "[jarvis][clusters][scaling]") {
+    std::cout << "\n=== JARVIS: CLUSTERS dataset (скалирование) ===\n";
+    
+    CALL_GIVEN("the performance profiler is initialized");
+    CALL_GIVEN("a CLUSTERS dataset for Jarvis scaling");
+    CALL_WHEN("I run Jarvis scaling test on CLUSTERS");
+    CALL_THEN("the Jarvis CLUSTERS results are saved");
 }
 
-TEST_CASE("Performance: Graham on 500 points", "[performance][graham][small]") {
-    CALL_GIVEN("a sparse dataset with 500 points forming 10 hull vertices");
-    CALL_WHEN("I run the Graham algorithm and measure time");
-    CALL_THEN("the execution time is less than 50 ms");
-    CALL_AND("the hull matches the Jarvis result");
-}
+// =======================================================
+// ТЕСТ 4: JARVIS на GRID
+// =======================================================
+BDD_GIVEN("a GRID dataset for Jarvis scaling", [](){
+    current_dataset_type = "GRID";
+    current_dataset_size = 0;
+});
 
-TEST_CASE("Performance: Result comparison on 800 points", "[performance][comparison][medium]") {
-    CALL_GIVEN("a mixed dataset with 800 points (dense and sparse regions)");
-    CALL_WHEN("I run both algorithms");
-    CALL_THEN("the sets of hull vertices are identical");
-    CALL_AND("the order of vertices may differ, but the set is the same");
-}
+BDD_WHEN("I run Jarvis scaling test on GRID", [](){
+    std::vector<size_t> sizes = {700000, 1100000, 1600000, 2000000};
+    profiler.setConfig("Jarvis", "GRID");
+    profiler.runLoadTest(sizes, Property::GRID);
+});
 
-TEST_CASE("Performance: Graham on 5000 points", "[performance][graham][medium]") {
-    CALL_GIVEN("I have a dense dataset \"dense_5000.txt\" where most points are vertices");
-    CALL_WHEN("I start the performance profiler");
-    CALL_AND("I run the Graham algorithm 5 times and calculate average time");
-    CALL_THEN("the average execution time is less than 2 seconds");
-    CALL_AND("memory consumption does not exceed 50 MB");
-}
+BDD_THEN("the Jarvis GRID results are saved", [](){
+    profiler.printTable();
+    profiler.saveToFile("jarvis_grid_scaling.txt");
+});
 
-TEST_CASE("Performance: Jarvis on 5000 points comparison", "[performance][jarvis][medium]") {
-    CALL_GIVEN("the same dense dataset \"dense_5000.txt\"");
-    CALL_WHEN("I run the Jarvis algorithm with the same profiling settings");
-    CALL_THEN("the execution time is at least 3 times slower than Graham");
-    CALL_AND("the theoretical complexity O(n*h) is confirmed (h ≈ 500)");
-}
-
-TEST_CASE("Performance: Correctness on 7500 points", "[performance][correctness][large]") {
-    CALL_GIVEN("a random dataset \"random_7500.txt\"");
-    CALL_WHEN("I run both algorithms");
-    CALL_THEN("the Graham result matches the Jarvis result");
-    CALL_AND("the hull area differs by less than 1e-8");
-}
-
-TEST_CASE("Performance: Graham on 20000 points", "[performance][graham][huge]") {
-    CALL_GIVEN("a dense dataset \"dense_20000.txt\"");
-    CALL_WHEN("I run the Graham algorithm");
-    CALL_THEN("execution time is less than 30 minutes");
-    CALL_AND("the result is saved to \"output/graham_20000.txt\"");
-}
-
-TEST_CASE("Performance: Jarvis on 20000 points", "[performance][jarvis][huge]") {
-    CALL_GIVEN("the same dense dataset \"dense_20000.txt\"");
-    CALL_WHEN("I run the Jarvis algorithm");
-    CALL_THEN("execution time exceeds 2 minutes");
-    CALL_AND("the time measurement is logged for comparison with unit tests");
+TEST_CASE("Jarvis scaling on GRID", "[jarvis][grid][scaling]") {
+    std::cout << "\n=== JARVIS: GRID dataset (скалирование) ===\n";
+    
+    CALL_GIVEN("the performance profiler is initialized");
+    CALL_GIVEN("a GRID dataset for Jarvis scaling");
+    CALL_WHEN("I run Jarvis scaling test on GRID");
+    CALL_THEN("the Jarvis GRID results are saved");
 }

@@ -170,7 +170,6 @@ namespace gherkin_bridge {
             if (!it->second) {
                 it->second = true;
                 used_count_++;
-                std::cout << "  ✅ Exact match marked: '" << key << "'\n";
             }
             return true;
         }
@@ -211,8 +210,6 @@ namespace gherkin_bridge {
                     if (!used) {
                         steps_[step] = true;
                         used_count_++;
-                        std::cout << "  ✅ Universal match: '" << step
-                            << "' → '" << text << "'\n";
 
                         // Опционально: выводим захваченные значения
                         for (size_t i = 1; i < matches.size(); ++i) {
@@ -224,7 +221,6 @@ namespace gherkin_bridge {
             }
         }
 
-        std::cout << "  ❌ Not found: '" << key << "'\n";
         return false;
     }
 

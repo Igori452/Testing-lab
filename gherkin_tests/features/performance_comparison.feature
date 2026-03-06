@@ -1,84 +1,121 @@
-Feature: Geographic Data Analysis
-  In order to quickly determine boundaries of object clusters
+Feature: Load Testing of Convex Hull Algorithms
   As a GIS analyst
-  I need to compute convex hulls efficiently for large datasets
+  I need to validate performance hypotheses for Jarvis and Graham algorithms
+  To understand their behavior on different dataset types
 
   Background:
-    Given time profiler is running
-    And test datasets have been loaded from the "datasets/" folder
-    And the "preliminary_experiment.log" shows that datasets > 15000 points take > 2 minutes
+    Given the performance profiler is initialized
+    And test datasets are generated on demand
 
-  Rule: For datasets up to 1000 points, any algorithm is acceptable
+  # ============================================================================
+  # ГИПОТЕЗА О СЛОЖНОСТИ
+  # ============================================================================
+  
+  Rule: Graham algorithm complexity should be O(n log n) regardless of hull size
 
-    # Декларативный стиль (описываем ЧТО проверяем)
-    Scenario: Jarvis on 500 points
-      Given a sparse dataset with 500 points forming 10 hull vertices
-      When I run the Jarvis algorithm and measure time
-      Then the execution time is less than 100 ms
-      And the hull is correctly constructed
+    Scenario Outline: Verification of Graham complexity hypothesis
+      Given I have a <type> dataset with <size> points
+      When I measure Graham execution time <n> times and calculate average
+      Then the time ratio between different sizes approximates theoretical O(n log n)
+      And the results are saved for analysis
 
-    Scenario: Graham on 500 points  
-      Given a sparse dataset with 500 points forming 10 hull vertices
-      When I run the Graham algorithm and measure time
-      Then the execution time is less than 50 ms
-      And the hull matches the Jarvis result
+      Examples:
+        | type   | size | n |
+        | sparse | 1000 | 5 |
+        | sparse | 2000 | 5 |
+        | sparse | 4000 | 5 |
+        | sparse | 8000 | 5 |
+        | dense  | 1000 | 5 |
+        | dense  | 2000 | 5 |
+        | dense  | 4000 | 5 |
+        | dense  | 8000 | 5 |
 
-    Scenario: Result comparison on 800 points
-      Given a mixed dataset with 800 points (dense and sparse regions)
-      When I run both algorithms
-      Then the sets of hull vertices are identical
-      And the order of vertices may differ, but the set is the same  # Перекрестная верификация
+  Rule: Jarvis algorithm complexity should be O(n*h) where h is hull vertices count
 
-  Rule: For datasets from 1000 to 10000 points, Graham is recommended
+    Scenario Outline: Verification of Jarvis complexity hypothesis
+      Given I have a <type> dataset with <size> points and hull size ~<h>
+      When I measure Jarvis execution time <n> times and calculate average
+      Then the time ratio between different datasets approximates theoretical O(n*h)
+      And the results are compared with Graham performance
 
-    # Императивный стиль (подробно описываем процесс измерения)
-    Scenario: Graham on 5000 points with performance measurement
-      Given I have a dense dataset "dense_5000.txt" where most points are vertices
-      When I start the performance profiler
-      And I run the Graham algorithm 5 times and calculate average time
-      Then the average execution time is less than 2 seconds
-      And memory consumption does not exceed 50 MB
+      Examples:
+        | type   | size | h   | n |
+        | sparse | 1000 | ~10 | 5 |
+        | sparse | 2000 | ~10 | 5 |
+        | sparse | 4000 | ~10 | 5 |
+        | dense  | 1000 | ~300| 5 |
+        | dense  | 2000 | ~600| 5 |
+        | dense  | 4000 | ~1200|5 |
 
-    Scenario: Jarvis on 5000 points should be slower
-      Given the same dense dataset "dense_5000.txt"
-      When I run the Jarvis algorithm with the same profiling settings
-      Then the execution time is at least 3 times slower than Graham
-      And the theoretical complexity O(n*h) is confirmed (h ≈ 500)
+  # ============================================================================
+  # ДАТАСЕТ 1: ИЗМЕРЕНИЕ ПАМЯТИ (небольшой)
+  # ============================================================================
+  
+  Rule: Memory consumption should be measured on moderate dataset
 
-    Scenario: Correctness check on 7500 points
-      Given a random dataset "random_7500.txt"
-      When I run both algorithms
-      Then the Graham result matches the Jarvis result
-      And the hull area differs by less than 1e-8  # Проверка точности
+    Scenario: Memory analysis on 10000 points
+      Given a mixed dataset with exactly 10000 points
+      When I run both algorithms with memory profiling
+      Then peak memory usage is recorded for:
+        | algorithm | max_memory_MB |
+        | Jarvis    | < 50          |
+        | Graham    | < 50          |
+      And the hull vertices count is saved for reference
+      And both algorithms produce identical hulls
 
-  Rule: For datasets over 10,000 points, Graham is required
+  # ============================================================================
+  # ДАТАСЕТ 2: ИЗМЕРЕНИЕ ВРЕМЕНИ (большой, 2-15 минут)
+  # ============================================================================
+  
+  Rule: Execution time should be measured on large dataset (2-15 minutes)
 
-    Scenario: Graham on 20000 points within time limits
-      Given a dense dataset "dense_20000.txt"
+    Scenario: Time analysis on large dense dataset (target: 5-10 minutes)
+      Given a dense dataset with 50000 points
+      When I run the Graham algorithm and measure execution time
+      Then the execution time is between 2 and 15 minutes
+      And the exact time is logged: <time> minutes
+      And the result is saved to "output/graham_large.txt"
+
+    Scenario: Time analysis on large sparse dataset (target: 2-5 minutes)
+      Given a sparse dataset with 100000 points
+      When I run the Graham algorithm and measure execution time
+      Then the execution time is between 2 and 10 minutes
+      And the exact time is logged: <time> minutes
+      And the result is saved to "output/graham_sparse_large.txt"
+
+    Scenario: Comparison on maximum dataset
+      Given a dense dataset with 100000 points
       When I run the Graham algorithm
-      Then execution time is less than 30 minutes
-      And the result is saved to "output/graham_20000.txt"
+      Then the execution time does not exceed 30 minutes
+      And memory usage is below 1200 MB
+      And results are saved for reference
 
-    Scenario: Jarvis on 20000 points exceeds time limits (preliminary experiment)
-      Given the same dense dataset "dense_20000.txt"
-      When I run the Jarvis algorithm
-      Then execution time exceeds 2 minutes  # t1 from preliminary experiment
-      And the time measurement is logged for comparison with unit tests
+  # ============================================================================
+  # ФИНАЛЬНЫЙ АНАЛИЗ
+  # ============================================================================
+  
+  Rule: All collected data should be aggregated for final report
 
-  Scenario Outline: Performance scaling with different data types
-    Given a <type> dataset with <size> points
-    When I measure execution time of both algorithms
-    Then the Graham to Jarvis time ratio corresponds to theoretical O(n log n) / O(n*h)
+    Scenario: Generate performance report
+      Given all measurements are completed
+      When I aggregate results from all test runs
+      Then a summary report is generated containing:
+        | section                 | content                          |
+        | complexity verification | O(n log n) vs O(n*h) confirmation|
+        | memory analysis         | peak usage for 10k points        |
+        | large dataset timing    | execution times for 50k-100k     |
+        | recommendations         | algorithm selection guidelines   |
+      And the report is saved as "load_test_report.txt"
 
-    Examples:
-      | type       | size  | expected_hull_size |
-      | sparse     | 100   | ~10                |
-      | sparse     | 1000  | ~10                |
-      | sparse     | 10000 | ~10                |
-      | dense      | 100   | ~50                |
-      | dense      | 1000  | ~300               |
-      | dense      | 10000 | ~2000              |
-
-  # Примечание: результаты нагрузочного тестирования сравниваются с unit-тестами
-  # TC_JARVIS_STMT_004 и TC_GRAHAM_STMT_005 подтверждают корректность,
-  # а производительность проверяется в данном feature-файле
+  # ============================================================================
+  # ПРИМЕЧАНИЯ
+  # ============================================================================
+  # - Генератор данных должен создавать:
+  #   * sparse: точки сгруппированы в центре, мало вершин оболочки (~10-20)
+  #   * dense: равномерное распределение, много вершин оболочки (~30-50% точек)
+  #   * mixed: комбинация обоих подходов
+  # - Для датасета 2 (время) используем dense 50000 и sparse 100000
+  # - Ожидаемое время на reference hardware:
+  #   * dense 50000: ~5-10 минут
+  #   * sparse 100000: ~2-5 минут
+  #   * dense 100000: ~15-25 минут
