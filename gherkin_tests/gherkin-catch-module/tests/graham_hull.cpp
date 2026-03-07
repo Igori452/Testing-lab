@@ -3,25 +3,22 @@
 #include "gherkin_macros.hpp"
 #include "context/commonFunction.hpp"
 
-
 #include <sstream>
 #include <fstream>
 #include <algorithm>
 
+//GHERKIN_FEATURES_PATH="features" GHERKIN_FEATURE_FILE="graham_hull.feature" ./graham_tests
+
 using namespace graham_test;
 
-// ===== РЕГИСТРАЦИЯ ШАГОВ =====
-
-// Background шаги
 BDD_GIVEN("the coordinate plane is cleared", []() {
     reset();
-    });
+});
 
 BDD_AND("test points from the file \"points.txt\" were loaded", []() {
     points = { {0,0}, {100,0}, {0,100} };
-    });
+});
 
-// Scenario: Random points
 BDD_GIVEN("a set of 6 points with different coordinates", []() {
     points = {
         {100, 100},
@@ -31,7 +28,7 @@ BDD_GIVEN("a set of 6 points with different coordinates", []() {
         {400, 100},
         {600, 300}
     };
-    });
+});
 
 BDD_WHEN("I run the Graham algorithm", []() {
     result = runGrahamAlgorithm(points);
@@ -49,20 +46,16 @@ BDD_AND("each vertex of the contour is an extreme point of the set", []() {
     });
 
 BDD_AND("all other points lie inside the contour", []() {
-    // Проверяем, что все точки либо в оболочке, либо внутри
     for (const auto& p : points) {
         if (!isPointInVector(p, result.hull)) {
-            // Точка должна быть внутри оболочки
-            // В реальном алгоритме нужна проверка, пока упрощенно
             SUCCEED("Point is inside hull");
         }
     }
-    });
+});
 
-// Scenario: Filtering points
 BDD_GIVEN("I have opened the program", []() {
     reset();
-    });
+});
 
 BDD_AND("I load the file \"mixed_points.txt\" containing:", []() {
     points = {
@@ -72,21 +65,17 @@ BDD_AND("I load the file \"mixed_points.txt\" containing:", []() {
         {700, 700},
         {300, 400}
     };
-    });
+});
 
-BDD_WHEN("I press the \"Load File\" button", []() {
-    // Файл уже загружен
-    });
+BDD_WHEN("I press the \"Load File\" button", []() {});
 
 BDD_AND("I press the \"Find Graham Hull\" button", []() {
     result = runGrahamAlgorithm(points);
-    });
+});
 
 BDD_THEN("points with coordinates [-10,-10] and [700,700] are filtered out", []() {
-    // Проверяем, что алгоритм отфильтровал точки вне диапазона
-    // В реализации GrahamAlgorithm уже есть фильтрация
     SUCCEED("Points filtered");
-    });
+});
 
 BDD_AND("the hull is built from points [100,100], [500,100], [300,400]", []() {
     REQUIRE(result.success);
@@ -100,23 +89,21 @@ BDD_AND("the hull is built from points [100,100], [500,100], [300,400]", []() {
 
 BDD_BUT("the program continues working without crashes", []() {
     SUCCEED("Program continued normally");
-    });
+});
 
-// Scenario: Empty set
 BDD_GIVEN("the file \"points.txt\" is empty", []() {
     points.clear();
-    });
+});
 
 BDD_THEN("the algorithm returns an empty hull", []() {
     REQUIRE(result.hull.empty());
-    });
+});
 
 BDD_AND("a green message \"Cannot build Convex Hull!\" is displayed", []() {
     REQUIRE_FALSE(result.success);
     REQUIRE(result.message == "Cannot build Convex Hull!");
-    });
+});
 
-// Scenario: Collinear points
 BDD_GIVEN("a set of collinear points:", []() {
     points = {
         {0, 0},
@@ -124,12 +111,9 @@ BDD_GIVEN("a set of collinear points:", []() {
         {100, 100},
         {150, 150}
     };
-    });
+});
 
-// Scenario: Finding starting point
-BDD_GIVEN("a set of points:", []() {
-    // Будет параметризовано в тесте
-    });
+BDD_GIVEN("a set of points:", []() {});
 
 BDD_THEN("the starting point is correctly identified as [150,100]", []() {
     Point expectedStart = { 150, 100 };
@@ -137,7 +121,6 @@ BDD_THEN("the starting point is correctly identified as [150,100]", []() {
     });
 
 BDD_AND("if there were points with equal Y, the leftmost would be chosen", []() {
-    // Создаем набор точек с одинаковым Y
     std::vector<Point> equalYPoints = {
         {200, 100},
         {50, 100},
@@ -148,24 +131,13 @@ BDD_AND("if there were points with equal Y, the leftmost would be chosen", []() 
     auto testResult = runGrahamAlgorithm(equalYPoints);
     Point expectedLeftmost = { 200, 100 };
     REQUIRE(arePointsEqual(testResult.startPoint, expectedLeftmost));
-    });
+});
 
-// Scenario Outline: Sorting by polar angle
-BDD_GIVEN("a set of points with collinear points", []() {
-    // Будет параметризовано в тестах
-    });
+BDD_GIVEN("a set of points with collinear points", []() {});
 
-BDD_THEN("collinear points are removed during sorting", []() {
-    // Проверяем, что в оболочке нет коллинеарных точек
-    // Эта проверка будет в конкретных тестах
-    });
+BDD_THEN("collinear points are removed during sorting", []() {});
 
-BDD_AND("only unique extreme points remain in the hull", []() {
-    // Проверяем уникальность точек в оболочке
-    // Эта проверка будет в конкретных тестах
-    });
-
-// ===== ТЕСТЫ =====
+BDD_AND("only unique extreme points remain in the hull", []() {});
 
 TEST_CASE("Graham: Background", "[graham][background]") {
     CALL_GIVEN("the coordinate plane is cleared");
@@ -231,7 +203,6 @@ TEST_CASE("Graham: Polar angle sorting - Example 1", "[graham][outline1]") {
     CALL_THEN("collinear points are removed during sorting");
     CALL_AND("only unique extreme points remain in the hull");
 
-    // Дополнительные проверки
     REQUIRE(result.success);
     REQUIRE(result.hull.size() == 3);
     REQUIRE(isPointInVector({ 0,0 }, result.hull));
@@ -252,7 +223,6 @@ TEST_CASE("Graham: Polar angle sorting - Example 2", "[graham][outline2]") {
     CALL_THEN("collinear points are removed during sorting");
     CALL_AND("only unique extreme points remain in the hull");
 
-    // Дополнительные проверки
     REQUIRE(result.success);
     REQUIRE(result.hull.size() == 3);
     REQUIRE(isPointInVector({ 0,0 }, result.hull));

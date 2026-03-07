@@ -7,9 +7,10 @@
 #include <fstream>
 #include <filesystem>
 
+//GHERKIN_FEATURES_PATH="features" GHERKIN_FEATURE_FILE="error_handling.feature" ./error_tests
+
 using namespace error_handling;
 
-// ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
 void resetState() {
     reset();
     state.programRunning = true;
@@ -19,17 +20,14 @@ void resetState() {
     state.jarvisHull.clear();
 }
 
-// ===== РЕГИСТРАЦИЯ ШАГОВ =====
-
-// ==================== SCENARIO 1: Invalid file format ====================
 BDD_GIVEN("I have opened the program", []() {
     resetState();
-    });
+});
 
 BDD_AND("I create a file \"corrupted.txt\" with the content:", []() {
     std::string content = "abc def\n100 xyz\n!@# $\n";
     createTestFile("corrupted.txt", content);
-    });
+});
 
 BDD_WHEN("I press the \"Load File\" button and select \"corrupted.txt\"", []() {
     state.lastButtonPressed = "Load File";
@@ -58,22 +56,21 @@ BDD_WHEN("I press the \"Load File\" button and select \"corrupted.txt\"", []() {
     }
 
     deleteTestFile("corrupted.txt");
-    });
+});
 
 BDD_THEN("the program does not terminate abnormally", []() {
     REQUIRE(state.programRunning);
     REQUIRE(state.windowOpen);
-    });
+});
 
 BDD_AND("no new points are displayed on the plane", []() {
     REQUIRE(state.points.empty());
-    });
+});
 
 BDD_BUT("an error message \"Invalid data format\" is printed to the console", []() {
     REQUIRE(state.errorMessage == "Invalid data format");
-    });
+});
 
-// ==================== SCENARIO 2: Negative coordinates ====================
 BDD_GIVEN("a file contains points with negative coordinates:", []() {
     resetState();
     state.points = {
@@ -81,18 +78,17 @@ BDD_GIVEN("a file contains points with negative coordinates:", []() {
         {100, -5},
         {-30, 50}
     };
-    });
+});
 
 BDD_WHEN("I load this file into the program", []() {
     state.lastButtonPressed = "Load File";
-    // Точки уже загружены
-    });
+});
 
 BDD_THEN("negative coordinates are displayed on the plane", []() {
     REQUIRE(isPointInList({ -10, -20 }, state.points));
     REQUIRE(isPointInList({ 100, -5 }, state.points));
     REQUIRE(isPointInList({ -30, 50 }, state.points));
-    });
+});
 
 BDD_BUT("building a hull is only possible for points in the range [0,600]", []() {
     std::vector<Point> pointsForAlgorithm;
@@ -102,13 +98,12 @@ BDD_BUT("building a hull is only possible for points in the range [0,600]", []()
         }
     }
     REQUIRE(pointsForAlgorithm.size() == 0);
-    });
+});
 
-// ==================== SCENARIO 3: File not found ====================
 BDD_GIVEN("the file \"nonexistent.txt\" does not exist in the program directory", []() {
     resetState();
     REQUIRE_FALSE(fileExists("nonexistent.txt"));
-    });
+});
 
 BDD_WHEN("I try to load this file", []() {
     state.lastButtonPressed = "Load File";
@@ -116,17 +111,16 @@ BDD_WHEN("I try to load this file", []() {
     if (!fileExists("nonexistent.txt")) {
         state.errorMessage = "File not found!";
     }
-    });
+});
 
 BDD_THEN("an error message \"File not found!\" is displayed", []() {
     REQUIRE(state.errorMessage == "File not found!");
-    });
+});
 
 BDD_AND("the plane remains in its previous state", []() {
     REQUIRE(state.points.empty());
-    });
+});
 
-// ==================== SCENARIO 4: Boundary - 3 points ====================
 BDD_GIVEN("a set of exactly 3 non-collinear points:", []() {
     resetState();
     state.points = {
@@ -134,7 +128,7 @@ BDD_GIVEN("a set of exactly 3 non-collinear points:", []() {
         {100, 0},
         {0, 100}
     };
-    });
+});
 
 BDD_WHEN("I run any convex hull algorithm", []() {
     std::vector<Point> algoPoints;
@@ -149,36 +143,32 @@ BDD_WHEN("I run any convex hull algorithm", []() {
     for (const auto& p : hull) {
         state.jarvisHull.push_back({ static_cast<int>(p.x), static_cast<int>(p.y) });
     }
-    });
+});
 
 BDD_THEN("the hull is successfully built as a triangle", []() {
     REQUIRE(state.jarvisHull.size() == 3);
     REQUIRE(isPointInList({ 0,0 }, state.jarvisHull));
     REQUIRE(isPointInList({ 100,0 }, state.jarvisHull));
     REQUIRE(isPointInList({ 0,100 }, state.jarvisHull));
-    });
+});
 
-// ==================== SCENARIO 5: Boundary - 2 points ====================
 BDD_GIVEN("a set of exactly 2 points:", []() {
     resetState();
     state.points = {
         {100, 100},
         {200, 200}
     };
-    });
-
-// Используем тот же WHEN
+});
 
 BDD_THEN("the algorithm returns an empty hull", []() {
     REQUIRE(state.jarvisHull.empty());
-    });
+});
 
 BDD_AND("a message \"Cannot build Convex Hull!\" is displayed", []() {
     state.errorMessage = "Cannot build Convex Hull!";
     REQUIRE(state.errorMessage == "Cannot build Convex Hull!");
-    });
+});
 
-// ==================== SCENARIO 6: Points on boundaries ====================
 BDD_GIVEN("a set of points on the boundaries [0,600]:", []() {
     resetState();
     state.points = {
@@ -188,7 +178,7 @@ BDD_GIVEN("a set of points on the boundaries [0,600]:", []() {
         {0, 600},
         {300, 300}
     };
-    });
+});
 
 BDD_WHEN("I run the Jarvis algorithm", []() {
     std::vector<Point> algoPoints;
@@ -203,47 +193,42 @@ BDD_WHEN("I run the Jarvis algorithm", []() {
     for (const auto& p : hull) {
         state.jarvisHull.push_back({ static_cast<int>(p.x), static_cast<int>(p.y) });
     }
-    });
+});
 
 BDD_THEN("all boundary points are included in the hull", []() {
     REQUIRE(isPointInList({ 0,0 }, state.jarvisHull));
     REQUIRE(isPointInList({ 600,0 }, state.jarvisHull));
     REQUIRE(isPointInList({ 600,600 }, state.jarvisHull));
     REQUIRE(isPointInList({ 0,600 }, state.jarvisHull));
-    });
+});
 
 BDD_AND("the hull has 4 vertices", []() {
     REQUIRE(state.jarvisHull.size() == 4);
     REQUIRE_FALSE(isPointInList({ 300,300 }, state.jarvisHull));
-    });
+});
 
-// ==================== SCENARIO OUTLINE 1: Less than 3 points ====================
 BDD_GIVEN("less than 3 points", []() {
     resetState();
     state.points = { {100,100}, {200,200} };
-    });
+});
 
 BDD_WHEN("I try to build a convex hull", []() {
-        state.errorMessage = "Cannot build Convex Hull!";
-    });
+    state.errorMessage = "Cannot build Convex Hull!";
+});
 
 BDD_THEN("the program displays \"Cannot build Convex Hull!\"", []() {
     REQUIRE(state.errorMessage == "Cannot build Convex Hull!");
-    });
+});
 
 BDD_AND("the application continues running", []() {
     REQUIRE(state.programRunning);
     REQUIRE(state.windowOpen);
-    });
+});
 
-
-// ==================== ОБЩИЙ ШАГ ====================
 BDD_AND("the application continues running", []() {
     REQUIRE(state.programRunning);
     REQUIRE(state.windowOpen);
-    });
-
-// ===== ТЕСТЫ =====
+});
 
 TEST_CASE("Errors: Invalid file format", "[errors][scenario1]") {
     CALL_GIVEN("I have opened the program");

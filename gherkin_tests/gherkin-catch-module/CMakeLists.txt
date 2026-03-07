@@ -9,7 +9,6 @@ add_subdirectory(libraries/Catch2/)
 
 add_library(gherkin_catch_module STATIC
     src/gherkin-catch-module.cpp
-    #src/step_registry.cpp
 )
 
 set(APP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../app)
@@ -80,3 +79,7 @@ target_link_libraries(performance_tests PRIVATE gherkin_catch_module)
 # Копируем features для всех тестов
 file (COPY ${CMAKE_CURRENT_SOURCE_DIR}/features/ 
       DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/features/)
+
+# Копируем datasets для всех тестов
+file (COPY ${CMAKE_CURRENT_SOURCE_DIR}/datasets/ 
+      DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)

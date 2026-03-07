@@ -44,9 +44,8 @@ public:
         pending_steps.clear();
     }
     
-    // Автоматическая инициализация при первом вызове
     static void ensureInitialized() {
-        static bool initialized = false;  // Локальная статическая переменная
+        static bool initialized = false;
         if (!initialized) {
             const char* featureFile = std::getenv("GHERKIN_FEATURE_FILE");
             if (!featureFile) {
@@ -94,7 +93,6 @@ static bool BDD_REG_VAR(__LINE__) = [](){ \
 #define BDD_AND(text,...)   BDD_REGISTER_STEP("And",text,__VA_ARGS__)
 #define BDD_BUT(text,...)   BDD_REGISTER_STEP("But",text,__VA_ARGS__)
 
-// Макросы для вызова шагов (с автоматической инициализацией)
 #define CALL_GIVEN(text) \
     do { \
         StepRegistry::ensureInitialized(); \

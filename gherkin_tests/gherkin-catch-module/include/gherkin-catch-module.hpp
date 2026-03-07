@@ -45,8 +45,6 @@ namespace gherkin_bridge {
     };
 } // namespace gherkin_bridge
 
-
-// Эти макросы ТОЛЬКО ОТМЕЧАЮТ шаги
 #define GHERKIN_GIVEN(text) \
     do { \
         ::gherkin_bridge::GherkinValidator::instance().validateStep("Given", text); \

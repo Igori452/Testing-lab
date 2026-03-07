@@ -5,7 +5,7 @@ Feature: Handling errors and edge cases
 
   Rule: Validation of input data
 
-    # Императивный стиль (подробное описание действий)
+    # Императивный стиль
     Scenario: Loading a file with invalid format
       Given I have opened the program
       And I create a file "corrupted.txt" with the content:
@@ -17,9 +17,9 @@ Feature: Handling errors and edge cases
       When I press the "Load File" button and select "corrupted.txt"
       Then the program does not terminate abnormally
       And no new points are displayed on the plane
-      But an error message "Invalid data format" is printed to the console  # Негативный сценарий
+      But an error message "Invalid data format" is printed to the console
 
-    # Декларативный стиль (описываем ЧТО, а не КАК)
+    # Декларативный стиль
     Scenario: Loading a file with negative coordinates
       Given a file contains points with negative coordinates:
         | x   | y   |
@@ -28,13 +28,13 @@ Feature: Handling errors and edge cases
         | -30 | 50  |
       When I load this file into the program
       Then negative coordinates are displayed on the plane
-      But building a hull is only possible for points in the range [0,600]  # TC_BV_фильтрация
+      But building a hull is only possible for points in the range [0,600]
 
     Scenario: File not found
       Given the file "nonexistent.txt" does not exist in the program directory
       When I try to load this file
       Then an error message "File not found!" is displayed
-      And the plane remains in its previous state  # Негативный сценарий
+      And the plane remains in its previous state
 
     Scenario: Boundary value - exactly 3 non-collinear points
       Given a set of exactly 3 non-collinear points:
@@ -43,7 +43,7 @@ Feature: Handling errors and edge cases
         | 100 | 0   |
         | 0   | 100 |
       When I run any convex hull algorithm
-      Then the hull is successfully built as a triangle  # TC_BV_004
+      Then the hull is successfully built as a triangle
 
     Scenario: Boundary value - exactly 2 points
       Given a set of exactly 2 points:
@@ -52,7 +52,7 @@ Feature: Handling errors and edge cases
         | 200 | 200 |
       When I run any convex hull algorithm
       Then the algorithm returns an empty hull
-      And a message "Cannot build Convex Hull!" is displayed  # TC_BV_003
+      And a message "Cannot build Convex Hull!" is displayed
 
     Scenario: Points exactly on the drawing boundary
       Given a set of points on the boundaries [0,600]:
@@ -64,7 +64,7 @@ Feature: Handling errors and edge cases
         | 300 | 300 |
       When I run the Jarvis algorithm
       Then all boundary points are included in the hull
-      And the hull has 4 vertices  # TC_BV_007 (граничные значения)
+      And the hull has 4 vertices
 
   Scenario Outline: Testing various incorrect data scenarios
     Given <condition>

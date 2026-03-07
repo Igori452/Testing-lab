@@ -10,19 +10,19 @@ Feature: Visualisation dots and hull
 
   Rule: Correct display of graphic elements
 
-    # Декларативный стиль (описываем ЧТО должно быть)
+    # Декларативный стиль
     Scenario: Different colors for different algorithms
       Given points are loaded on the plane
       When I run the Jarvis algorithm
-      Then the hull is displayed in red color  # Как на рисунке 2.3
+      Then the hull is displayed in red color
       When I run the Graham algorithm
-      Then the hull is displayed in green color  # Как на рисунке 2.4
+      Then the hull is displayed in green color
 
     Scenario: Clearing the plane when loading new data
       Given points and a hull are displayed on the plane
       When I load a new file "new_points.txt"
       Then the previous points and hull disappear
-      And only the new points are displayed  # Очистка перед новой загрузкой
+      And only the new points are displayed
 
     Scenario: Error message display for impossible hull construction
       Given collinear points are loaded:
@@ -31,9 +31,9 @@ Feature: Visualisation dots and hull
         | 200 | 200 |
         | 300 | 300 |
       When I press the "Find Jarvis Hull" button
-      Then a red message "Cannot build Convex Hull!" appears above the button  # Как на рисунке 2.5
+      Then a red message "Cannot build Convex Hull!" appears above the button
       When I press the "Find Graham Hull" button
-      Then a green message "Cannot build Convex Hull!" appears above the button  # Как на рисунке 2.6
+      Then a green message "Cannot build Convex Hull!" appears above the button
 
     Scenario: Displaying points with exact coordinates
       Given I load points with coordinates on the boundaries:
@@ -44,7 +44,7 @@ Feature: Visualisation dots and hull
         | 0   | 600 |
       When the points are displayed
       Then they are visible at the corners of the plane
-      And no points are cut off  # Проверка границ отрисовки
+      And no points are cut off
 
   Scenario Outline: Visual verification of different point sets
     Given the file "<dataset>" is loaded
@@ -65,4 +65,4 @@ Feature: Visualisation dots and hull
       Given the program is running
       When I press the "Exit" button
       Then the program window closes
-      And the process terminates  # Как описано в разделе 2.1
+      And the process terminates

@@ -9,7 +9,7 @@ Feature: Construction of contour processing algorithm of Jarvis algorithm
 
   Rule: Construction of a shell is only possible with specific input data
 
-    # Декларативный стиль (описываем ЧТО происходит, не вдаваясь в детали)
+    # Декларативный стиль
     Scenario: Successful construction for the minimum set of points
       Given a set of 3 non-collinear points:
         | x   | y   |
@@ -19,9 +19,9 @@ Feature: Construction of contour processing algorithm of Jarvis algorithm
       When I run the Jarvis algorithm
       Then a red triangle is displayed on the screen
       And the hull contains exactly 3 vertices
-      And all original points are either vertices or lie inside  # TC_EP_004
+      And all original points are either vertices or lie inside
 
-    # Императивный стиль (описываем КАК пользователь это делает)
+    # Императивный стиль
     Scenario: Attempt to build for two points
       Given I have opened the program
       And I load the file "two_points.txt" containing:
@@ -32,13 +32,13 @@ Feature: Construction of contour processing algorithm of Jarvis algorithm
       When I press the "Load File" button
       And I press the "Find Jarvis Hull" button
       Then a red message "Cannot build Convex Hull!" appears above the button
-      And the hull is not displayed on the plane  # TC_EP_003, TC_BV_003
+      And the hull is not displayed on the plane
 
     Scenario: Empty set of points
       Given the file "points.txt" is empty
       When I run the Jarvis algorithm
       Then the algorithm returns an empty hull
-      And the plane remains empty  # TC_EP_001, TC_BV_001
+      And the plane remains empty
 
     Scenario: All points are collinear
       Given a set of collinear points:
@@ -48,7 +48,7 @@ Feature: Construction of contour processing algorithm of Jarvis algorithm
         | 100 | 100 |
       When I run the Jarvis algorithm
       Then the algorithm returns an empty hull
-      And a message "Cannot build Convex Hull!" is displayed  # TC_EP_005, TC_BV_005
+      And a message "Cannot build Convex Hull!" is displayed
 
     Scenario: All points have the same coordinates
       Given a set of points with identical coordinates:
@@ -58,7 +58,7 @@ Feature: Construction of contour processing algorithm of Jarvis algorithm
         | 100 | 100 |
         | 100 | 100 |
       When I run the Jarvis algorithm
-      Then the algorithm returns an empty hull  # TC_EP_002
+      Then the algorithm returns an empty hull
 
   Scenario Outline: Building a hull for different configurations of points
     Given a set of points:

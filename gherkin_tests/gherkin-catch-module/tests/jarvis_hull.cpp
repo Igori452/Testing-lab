@@ -6,11 +6,10 @@
 #include <sstream>
 #include <fstream>
 
+//GHERKIN_FEATURES_PATH="features" GHERKIN_FEATURE_FILE="jarvis_hull.feature" ./jarvis_tests
+
 using namespace jarvis_test;
 
-// ===== РЕГИСТРАЦИЯ ШАГОВ =====
-
-// Background шаги
 BDD_GIVEN("the coordinate plane is cleared", []() {
     reset();
 });
@@ -19,7 +18,6 @@ BDD_AND("test points from the file \"points.txt\" were loaded", []() {
     points = {{0,0}, {100,0}, {0,100}};
 });
 
-// Scenario: Successful construction
 BDD_GIVEN("a set of 3 non-collinear points:", []() {
     points = {
         {0, 0},
@@ -47,7 +45,6 @@ BDD_AND("all original points are either vertices or lie inside", []() {
     }
 });
 
-// Scenario: Two points
 BDD_GIVEN("I have opened the program", []() {
     reset();
 });
@@ -56,9 +53,7 @@ BDD_AND("I load the file \"two_points.txt\" containing:", []() {
     points = {{100,100}, {200,200}};
 });
 
-BDD_WHEN("I press the \"Load File\" button", []() {
-    // Файл уже загружен
-});
+BDD_WHEN("I press the \"Load File\" button", []() {});
 
 BDD_AND("I press the \"Find Jarvis Hull\" button", []() {
     result = runJarvisAlgorithm(points);
@@ -73,7 +68,6 @@ BDD_AND("the hull is not displayed on the plane", []() {
     REQUIRE(result.hull.empty());
 });
 
-// Scenario: Empty set
 BDD_GIVEN("the file \"points.txt\" is empty", []() {
     points.clear();
 });
@@ -86,7 +80,6 @@ BDD_AND("the plane remains empty", []() {
     REQUIRE(result.hull.empty());
 });
 
-// Scenario: Collinear points
 BDD_GIVEN("a set of collinear points:", []() {
     points = {
         {0, 0},
@@ -99,7 +92,6 @@ BDD_AND("a message \"Cannot build Convex Hull!\" is displayed", []() {
     REQUIRE(result.message == "Cannot build Convex Hull!");
 });
 
-// Scenario: Identical coordinates
 BDD_GIVEN("a set of points with identical coordinates:", []() {
     points = {
         {100, 100},
@@ -109,7 +101,6 @@ BDD_GIVEN("a set of points with identical coordinates:", []() {
     };
 });
 
-// Scenario: Filtering points
 BDD_GIVEN("a set of points with coordinates outside [0,600]:", []() {
     points = {
         {-10, -10},
@@ -139,10 +130,7 @@ BDD_BUT("the program does not crash", []() {
     SUCCEED("Program continued normally");
 });
 
-// Scenario Outline examples
-BDD_GIVEN("a set of points:", []() {
-    // Будет параметризовано в тестах
-});
+BDD_GIVEN("a set of points:", []() {});
 
 BDD_THEN("the number of vertices in the hull equals 4", []() {
     REQUIRE(result.hull.size() == 4);
@@ -157,8 +145,6 @@ BDD_AND("all vertices have coordinates from the set of original points", []() {
         REQUIRE(isPointInVector(p, points));
     }
 });
-
-// ===== ТЕСТЫ =====
 
 TEST_CASE("Jarvis: Background", "[jarvis][background]") {
     CALL_GIVEN("the coordinate plane is cleared");

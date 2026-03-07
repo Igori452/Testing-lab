@@ -17,10 +17,9 @@ struct GrahamResult {
     std::vector<Point> hull;
     std::string message;
     bool success;
-    Point startPoint;  // Для проверки стартовой точки
+    Point startPoint;
 };
 
-// Глобальный контекст для тестов Jarvis
 namespace jarvis_test {
     extern std::vector<Point> points;
     extern JarvisResult result;
@@ -29,7 +28,6 @@ namespace jarvis_test {
     void reset();
 }
 
-// Глобальный контекст для тестов Graham
 namespace graham_test {
     extern std::vector<Point> points;
     extern GrahamResult result;

@@ -3,7 +3,6 @@
 #include <fstream>
 #include <filesystem>
 
-// ===== Jarvis контекст =====
 namespace jarvis_test {
     std::vector<Point> points;
     JarvisResult result;
@@ -22,9 +21,17 @@ namespace jarvis_test {
         points.clear();
         result = JarvisResult{};
     }
+
+    bool operator<(const Point& a, const Point& b) {
+        if (a.x != b.x) return a.x < b.x;
+        return a.y < b.y;
+    }
+
+    bool operator==(const Point& a, const Point& b) {
+        return a.x == b.x && a.y == b.y;
+    }
 }
 
-// ===== Graham контекст =====
 namespace graham_test {
     std::vector<Point> points;
     GrahamResult result;
@@ -37,7 +44,6 @@ namespace graham_test {
         res.success = !res.hull.empty();
         res.message = res.success ? "Success" : "Cannot build Convex Hull!";
         
-        // Сохраняем стартовую точку (самую нижнюю, левую)
         if (!temp.empty()) {
             res.startPoint = temp[0];
         }

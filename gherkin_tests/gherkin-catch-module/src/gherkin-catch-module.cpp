@@ -57,7 +57,6 @@ namespace gherkin_bridge {
         return converter.from_bytes(content);
     }
 
-    // Функция для удаления строк с Rule: (работает с UTF-8 string)
     std::wstring removeRuleLines(const std::wstring& content) {
         std::wstring result;
         std::wistringstream stream(content);
@@ -67,7 +66,7 @@ namespace gherkin_bridge {
             size_t firstChar = line.find_first_not_of(L" \t");
             if (firstChar != std::wstring::npos) {
                 if (line.substr(firstChar, 5) == L"Rule:") {
-                    continue;  // пропускаем строки с Rule:
+                    continue;
                 }
             }
             result += line + L"\n";
@@ -100,7 +99,6 @@ namespace gherkin_bridge {
                 
                 if (!def) continue;
 
-                // Пробуем обработать каждый элемент
                 switch (def->type) {
                 case Gherkin_Background: {
                     const Background* bg = (const Background*)def;
@@ -122,9 +120,7 @@ namespace gherkin_bridge {
                 }
             }
         }
-        catch (const std::exception& e) {
-            // Игнорируем ошибки
-        }
+        catch (const std::exception& e) {}
     }
 
     void GherkinValidator::processSteps(const Steps* steps) {
@@ -149,7 +145,6 @@ namespace gherkin_bridge {
         std::string keyword = trim(converter.to_bytes(keyword_w));
         std::string text = trim(converter.to_bytes(text_w));
 
-        // Удаляем комментарии из текста (всё от # до конца строки)
         size_t commentPos = text.find(" #");
         if (commentPos != std::string::npos) {
             text = text.substr(0, commentPos);
@@ -164,7 +159,6 @@ namespace gherkin_bridge {
     bool GherkinValidator::validateStep(const std::string& keyword, const std::string& text) {
         std::string key = keyword + " " + text;
 
-        // 1. Точное совпадение
         auto it = steps_.find(key);
         if (it != steps_.end()) {
             if (!it->second) {
@@ -174,20 +168,16 @@ namespace gherkin_bridge {
             return true;
         }
 
-        // 2. УНИВЕРСАЛЬНЫЙ шаблон: любой текст в < > заменяем на (.*)
         for (auto& [step, used] : steps_) {
             if (step.find(keyword) != 0) continue;
 
             std::string stepText = step.substr(keyword.length() + 1);
             std::string userText = text;
 
-            // Проверяем, есть ли в шаблоне <...>
             if (stepText.find('<') != std::string::npos && stepText.find('>') != std::string::npos) {
 
-                // Создаем regex: все что в < > заменяем на (.*)
                 std::string pattern = stepText;
 
-                // Экранируем спецсимволы
                 pattern = std::regex_replace(pattern, std::regex("\\."), "\\.");
                 pattern = std::regex_replace(pattern, std::regex("\\?"), "\\?");
                 pattern = std::regex_replace(pattern, std::regex("\\*"), "\\*");
@@ -200,7 +190,6 @@ namespace gherkin_bridge {
                 pattern = std::regex_replace(pattern, std::regex("\\)"), "\\)");
                 pattern = std::regex_replace(pattern, std::regex("\\|"), "\\|");
 
-                // Заменяем <...> на (.*) — любые символы
                 pattern = std::regex_replace(pattern, std::regex("<[^>]+>"), "(.*)");
 
                 std::regex stepRegex("^" + pattern + "$");
@@ -220,7 +209,6 @@ namespace gherkin_bridge {
     }
 
     GherkinValidator::~GherkinValidator() {
-        // Выводим отчёт в самом конце, после всех тестов
         std::cout << "\n";
         std::cout << "╔════════════════════════════════════════╗\n";
         std::cout << "║     GLOBAL BDD COVERAGE REPORT         ║\n";

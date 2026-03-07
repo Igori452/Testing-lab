@@ -11,26 +11,11 @@
 #include <random>
 #include <unistd.h>
 
-//GHERKIN_FEATURES_PATH="features" GHERKIN_FEATURE_FILE="performance_comparison.feature" ./performance_tests -s -d yes
+//GHERKIN_FEATURES_PATH="features" GHERKIN_FEATURE_FILE="performance_comparison.feature" ./performance_tests
 
 using namespace jarvis_test;
 using namespace graham_test;
 
-
-namespace jarvis_test {
-    bool operator<(const Point& a, const Point& b) {
-        // TODO: реализовать оператор сравнения
-        if (a.x != b.x) return a.x < b.x;
-        return a.y < b.y;
-    }
-    
-    bool operator==(const Point& a, const Point& b) {
-        // TODO: реализовать оператор равенства
-        return a.x == b.x && a.y == b.y;
-    }
-}
-
-// Глобальные переменные для передачи данных между шагами
 static std::vector<Point> dataset;
 static std::vector<double> graham_times;
 static std::vector<double> jarvis_times;
@@ -39,7 +24,7 @@ static double avg_time_ms = 0;
 static size_t dataset_size = 0;
 static std::string current_dataset_type;
 static size_t peak_memory_kb = 0;
-static int current_run_count = 5; // значение по умолчанию
+static int current_run_count = 5;
 static int current_dataset_size = 0;
 static std::string current_dataset_name;
 
@@ -57,26 +42,24 @@ static Metrics metrics;
 size_t getCurrentMemoryUsage() {
     std::ifstream statm("/proc/self/statm");
     if (!statm.is_open()) {
-        // Если не Linux, возвращаем 0
         return 0;
     }
     
     long rss;
-    statm >> rss; // пропускаем size
-    statm >> rss; // читаем resident
+    statm >> rss;
+    statm >> rss;
     
     long page_size = sysconf(_SC_PAGESIZE);
     if (page_size == -1) {
-        page_size = 4096; // значение по умолчанию
+        page_size = 4096;
     }
     
-    return (rss * page_size) / 1024; // в KB
+    return (rss * page_size) / 1024;
 }
 
 enum class Property {
-    CLUSTERS,      // кластеры (h маленькое)
-    GRID,           // решетка (h большое)
-    CIRCLE
+    CIRCLE,
+    GRID,
 };
 
 std::vector<Point> generateDataset(size_t n, Property prop) {
@@ -86,49 +69,19 @@ std::vector<Point> generateDataset(size_t n, Property prop) {
     pts.reserve(n);
     
     switch (prop) {
-        case Property::CLUSTERS: {
-            // Кластеры в диапазоне [0,600]
-            std::vector<std::pair<double, double>> centers = {
-                {150, 150}, {300, 300}, {450, 450}  // центры в пределах [0,600]
-            };
-            std::uniform_int_distribution<> center_choice(0, centers.size() - 1);
-            std::normal_distribution<> cluster(0, 30);
-
-            // Граничные точки для оболочки
-            std::uniform_int_distribution<> boundary(0, 600);
-            size_t boundary_count = n / 50;
-
-            for (size_t i = 0; i < n; ++i) {
-                if (i < boundary_count) {
-                    pts.push_back({ double(boundary(gen)), double(boundary(gen)) });
-                }
-                else {
-                    int c = center_choice(gen);
-                    pts.push_back({
-                        centers[c].first + cluster(gen),
-                        centers[c].second + cluster(gen)
-                        });
-                }
-            }
-            break;
-        }
-
         case Property::GRID: {
             int side = static_cast<int>(std::ceil(std::sqrt(n)));
             double step = 600.0 / (side - 1);
 
-            // Генерируем ВСЕ точки решетки
             for (int i = 0; i < side; ++i) {
                 for (int j = 0; j < side; ++j) {
                     pts.push_back({ i * step, j * step });
                 }
             }
-            // Не обрезаем! Используем все сгенерированные точки
             break;
         }
 
         case Property::CIRCLE: {
-            // Окружность с центром в (300,300), радиус 250 (чтобы не выйти за [0,600])
             double center = 300;
             double radius = 250;
 
@@ -146,12 +99,6 @@ std::vector<Point> generateDataset(size_t n, Property prop) {
     return pts;
 }
 
-// =======================================================
-// ПРОФАЙЛЕР ДЛЯ НАГРУЗОЧНОГО ТЕСТИРОВАНИЯ
-// =======================================================
-// =======================================================
-// ПРОФАЙЛЕР ДЛЯ НАГРУЗОЧНОГО ТЕСТИРОВАНИЯ (с кэшированием)
-// =======================================================
 class LoadProfiler {
 private:
     struct LoadPoint {
@@ -166,13 +113,11 @@ private:
     std::string dataset_type;
     std::string cache_filename;
     
-    // Очистка кэша (Linux)
     void clearCache() {
         sync();
         std::ofstream("/proc/sys/vm/drop_caches") << "3";
     }
     
-    // Сохранение датасета в файл
     void saveDatasetToFile(const std::vector<Point>& dataset, size_t size) {
         std::string filename = "cache_" + dataset_type + "_" + std::to_string(size) + ".bin";
         std::ofstream f(filename, std::ios::binary);
@@ -182,7 +127,6 @@ private:
         f.close();
     }
     
-    // Загрузка датасета из файла
     std::vector<Point> loadDatasetFromFile(size_t size) {
         std::string filename = "cache_" + dataset_type + "_" + std::to_string(size) + ".bin";
         std::vector<Point> dataset;
@@ -194,12 +138,11 @@ private:
             dataset.resize(points_count);
             f.read(reinterpret_cast<char*>(dataset.data()), points_count * sizeof(Point));
             f.close();
-            std::cout << "  ✓ Загружено из кэша: " << filename << "\n";
+            std::cout << "Загружено из кэша: " << filename << "\n";
         }
         return dataset;
     }
     
-    // Проверка существования файла
     bool datasetExists(size_t size) {
         std::string filename = "cache_" + dataset_type + "_" + std::to_string(size) + ".bin";
         std::ifstream f(filename);
@@ -215,21 +158,20 @@ public:
     
 void runLoadTest(const std::vector<size_t>& sizes, Property prop, bool useCache = true) {
     std::cout << "\n" << std::string(70, '=') << "\n";
-    std::cout << "📊 НАГРУЗОЧНОЕ ТЕСТИРОВАНИЕ: " << algorithm_name 
+    std::cout << "НАГРУЗОЧНОЕ ТЕСТИРОВАНИЕ: " << algorithm_name 
               << " на " << dataset_type << "\n";
     std::cout << std::string(70, '=') << "\n";
     
-    // Максимальный размер для генерации
     size_t max_size = 0;
     if (useCache) {
         for (size_t size : sizes) {
             if (size > max_size) max_size = size;
         }
-        std::cout << "🔧 Максимальный размер: " << max_size << " точек\n";
+        std::cout << "Максимальный размер: " << max_size << " точек\n";
     }
     
     for (size_t size : sizes) {
-        std::cout << "\n▶ Тест на " << size << " точках...\n";
+        std::cout << "\nТест на " << size << " точках...\n";
         
         // Загрузка или генерация данных
         std::vector<Point> dataset;
@@ -239,7 +181,7 @@ void runLoadTest(const std::vector<size_t>& sizes, Property prop, bool useCache 
             dataset = generateDataset(size, prop);
             if (useCache) {
                 saveDatasetToFile(dataset, size);
-                std::cout << "  ✓ Сгенерировано и сохранено в кэш\n";
+                std::cout << "Сгенерировано и сохранено в кэш\n";
             }
         }
         
@@ -273,7 +215,7 @@ void runLoadTest(const std::vector<size_t>& sizes, Property prop, bool useCache 
             // Сохраняем результат (total memory)
             results.push_back({size, time_sec, total_mem_kb / 1024.0, result.hull.size()});
             
-            printf("  ✓ Время: %.2f сек | Данные: %.2f MB | Алгоритм: %.2f MB | Всего: %.2f MB | h: %zu\n", 
+            printf("Время: %.2f сек | Данные: %.2f MB | Алгоритм: %.2f MB | Всего: %.2f MB | h: %zu\n", 
                    time_sec, 
                    data_memory_kb/1024.0, 
                    algo_mem_kb/1024.0, 
@@ -283,21 +225,17 @@ void runLoadTest(const std::vector<size_t>& sizes, Property prop, bool useCache 
             JarvisResult result = runJarvisAlgorithm(dataset);
             auto end = std::chrono::high_resolution_clock::now();
         
-            // Замер памяти после
             size_t mem_after = getCurrentMemoryUsage();
             
-            // Память алгоритма (разница)
             size_t algo_mem_kb = mem_after > mem_before ? mem_after - mem_before : 0;
             
-            // ОБЩАЯ память = данные + алгоритм
             size_t total_mem_kb = data_memory_kb + algo_mem_kb;
             
             double time_sec = std::chrono::duration<double>(end - start).count();
             
-            // Сохраняем результат (total memory)
             results.push_back({size, time_sec, total_mem_kb / 1024.0, result.hull.size()});
             
-            printf("  ✓ Время: %.2f сек | Данные: %.2f MB | Алгоритм: %.2f MB | Всего: %.2f MB | h: %zu\n", 
+            printf("Время: %.2f сек | Данные: %.2f MB | Алгоритм: %.2f MB | Всего: %.2f MB | h: %zu\n", 
                    time_sec, 
                    data_memory_kb/1024.0, 
                    algo_mem_kb/1024.0, 
@@ -309,7 +247,7 @@ void runLoadTest(const std::vector<size_t>& sizes, Property prop, bool useCache 
     
     void printTable() {
         std::cout << "\n" << std::string(70, '=') << "\n";
-        std::cout << "📊 ИТОГОВАЯ ТАБЛИЦА: " << algorithm_name << " на " << dataset_type << "\n";
+        std::cout << "ИТОГОВАЯ ТАБЛИЦА: " << algorithm_name << " на " << dataset_type << "\n";
         std::cout << std::string(70, '=') << "\n";
         
         printf("%12s | %12s | %12s | %10s\n", 
@@ -334,13 +272,13 @@ void runLoadTest(const std::vector<size_t>& sizes, Property prop, bool useCache 
               << r.memory_mb << "\t" << r.hull_size << "\n";
         }
         f.close();
-        std::cout << "✅ Результаты сохранены в " << filename << "\n";
+        std::cout << "Результаты сохранены в " << filename << "\n";
     }
     
     // Экспорт данных для отчета (Markdown формат)
     void exportForReport(const std::string& filename) {
         std::ofstream f(filename);
-        f << "# Результаты нагрузочного тестирования\n\n";
+        f << "#Результаты нагрузочного тестирования\n\n";
         f << "## " << algorithm_name << " на " << dataset_type << "\n\n";
         f << "| Размер | Время (сек) | Память (MB) | Вершин h |\n";
         f << "|--------|-------------|-------------|----------|\n";
@@ -350,56 +288,23 @@ void runLoadTest(const std::vector<size_t>& sizes, Property prop, bool useCache 
               << " | " << r.memory_mb << " | " << r.hull_size << " |\n";
         }
         f.close();
-        std::cout << "✅ Отчет сохранен в " << filename << "\n";
+        std::cout << "Отчет сохранен в " << filename << "\n";
     }
 };
 
 static LoadProfiler profiler;
 
-// =======================================================
-// BACKGROUND (уже есть в вашем коде)
-// =======================================================
 BDD_GIVEN("the performance profiler is initialized", [](){});
 
 BDD_AND("test datasets are generated on demand", [](){});
 
-// =======================================================
-// ТЕСТ 1: GRAHAM на CLUSTERS
-// =======================================================
-BDD_GIVEN("a CLUSTERS dataset for Graham scaling", [](){
-    current_dataset_type = "CLUSTERS";
-    current_dataset_size = 0;
-});
-
-BDD_WHEN("I run Graham scaling test on CLUSTERS", [](){
-    std::vector<size_t> sizes = { 5000, 40000, 80000, 100000 };
-    profiler.setConfig("Graham", "CLUSTERS");
-    profiler.runLoadTest(sizes, Property::CLUSTERS);
-});
-
-BDD_THEN("the Graham CLUSTERS results are saved", [](){
-    profiler.printTable();
-    profiler.saveToFile("graham_clusters_scaling.txt");
-});
-
-TEST_CASE("Graham scaling on CLUSTERS", "[graham][clusters][scaling]") {
-    std::cout << "\n=== GRAHAM: CLUSTERS dataset (скалирование) ===\n";
-    
-    CALL_GIVEN("the performance profiler is initialized");
-    CALL_GIVEN("a CLUSTERS dataset for Graham scaling");
-    CALL_WHEN("I run Graham scaling test on CLUSTERS");
-    CALL_THEN("the Graham CLUSTERS results are saved");
-}
-// =======================================================
-// ТЕСТ 2: GRAHAM на GRID
-// =======================================================
 BDD_GIVEN("a GRID dataset for Graham scaling", [](){
     current_dataset_type = "GRID";
     current_dataset_size = 0;
 });
 
 BDD_WHEN("I run Graham scaling test on GRID", [](){
-    std::vector<size_t> sizes = {5000, 40000, 80000, 100000};
+    std::vector<size_t> sizes = { 5000, 40000, 80000, 100000 };
     profiler.setConfig("Graham", "GRID");
     profiler.runLoadTest(sizes, Property::GRID);
 });
@@ -418,39 +323,58 @@ TEST_CASE("Graham scaling on GRID", "[graham][grid][scaling]") {
     CALL_THEN("the Graham GRID results are saved");
 }
 
-// =======================================================
-// ТЕСТ 3: JARVIS на CLUSTERS
-// =======================================================
-BDD_GIVEN("a CLUSTERS dataset for Jarvis scaling", [](){
-    current_dataset_type = "CLUSTERS";
+BDD_GIVEN("a CIRCLE dataset for Graham scaling", []() {
+    current_dataset_type = "CIRCLE";
+    current_dataset_size = 0;
+    });
+
+BDD_WHEN("I run Graham scaling test on CIRCLE", []() {
+    std::vector<size_t> sizes = { 700000, 1600000, 2000000, 5000000 };
+    profiler.setConfig("Graham", "CIRCLE");
+    profiler.runLoadTest(sizes, Property::CIRCLE);
+    });
+
+BDD_THEN("the Graham CIRCLE results are saved", []() {
+    profiler.printTable();
+    profiler.saveToFile("graham_circle_scaling.txt");
+    });
+
+TEST_CASE("Graham scaling on CIRCLE", "[graham][circle][scaling]") {
+    std::cout << "\n=== GRAHAM: CIRCLE dataset (скалирование) ===\n";
+
+    CALL_GIVEN("the performance profiler is initialized");
+    CALL_GIVEN("a CIRCLE dataset for Graham scaling");
+    CALL_WHEN("I run Graham scaling test on CIRCLE");
+    CALL_THEN("the Graham CIRCLE results are saved");
+}
+
+BDD_GIVEN("a GRID dataset for Jarvis scaling", [](){
+    current_dataset_type = "GRID";
     current_dataset_size = 0;
 });
 
-BDD_WHEN("I run Jarvis scaling test on CLUSTERS", [](){
+BDD_WHEN("I run Jarvis scaling test on GRID", [](){
     std::vector<size_t> sizes = {700000, 1600000, 2000000, 5000000};
-    profiler.setConfig("Jarvis", "CLUSTERS");
-    profiler.runLoadTest(sizes, Property::CLUSTERS);
+    profiler.setConfig("Jarvis", "GRID");
+    profiler.runLoadTest(sizes, Property::GRID);
 });
 
-BDD_THEN("the Jarvis CLUSTERS results are saved", [](){
+BDD_THEN("the Jarvis GRID results are saved", [](){
     profiler.printTable();
-    profiler.saveToFile("jarvis_clusters_scaling.txt");
+    profiler.saveToFile("jarvis_grid_scaling.txt");
 });
 
-TEST_CASE("Jarvis scaling on CLUSTERS", "[jarvis][clusters][scaling]") {
+TEST_CASE("Jarvis scaling on GRID", "[jarvis][grid][scaling]") {
     std::cout << "\n=== JARVIS: CLUSTERS dataset (скалирование) ===\n";
     
     CALL_GIVEN("the performance profiler is initialized");
-    CALL_GIVEN("a CLUSTERS dataset for Jarvis scaling");
-    CALL_WHEN("I run Jarvis scaling test on CLUSTERS");
-    CALL_THEN("the Jarvis CLUSTERS results are saved");
+    CALL_GIVEN("a GRID dataset for Jarvis scaling");
+    CALL_WHEN("I run Jarvis scaling test on GRID");
+    CALL_THEN("the Jarvis GRID results are saved");
 }
 
-// =======================================================
-// ТЕСТ 4: JARVIS на GRID
-// =======================================================
 BDD_GIVEN("a CIRCLE dataset for Jarvis scaling", [](){
-    current_dataset_type = "GRID";
+    current_dataset_type = "CIRCLE";
     current_dataset_size = 0;
 });
 
@@ -462,11 +386,10 @@ BDD_WHEN("I run Jarvis scaling test on CIRCLE", [](){
 
 BDD_THEN("the Jarvis CIRCLE results are saved", [](){
     profiler.printTable();
-    profiler.saveToFile("jarvis_grid_scaling.txt");
+    profiler.saveToFile("jarvis_circle_scaling.txt");
 });
 
-
-TEST_CASE("Jarvis scaling on CIRCLE", "[jarvis][grid][scaling]") {
+TEST_CASE("Jarvis scaling on CIRCLE", "[jarvis][circle][scaling]") {
     std::cout << "\n=== JARVIS: CIRCLE dataset (скалирование) ===\n";
     
     CALL_GIVEN("the performance profiler is initialized");
