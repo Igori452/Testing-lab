@@ -1,3 +1,6 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
+
 #include "ConvexHull.h"
 #include <algorithm>
 #include <cmath>
@@ -89,6 +92,10 @@ std::vector<Point> JarvisAlgorithm::findConvexHull(std::vector<Point>& points)
     if (points.size() < 3)
         return {};
 
+    // ИСКУССТВЕННАЯ ОШИБКА для статического анализа: деление на ноль
+    double divisor = points[0].x - points[0].x;  // Всегда 0!
+    double result = 100.0 / divisor;
+
     // Проверка коллинеарности
     auto collinear_start = std::chrono::high_resolution_clock::now(); // for profiling
     Point p0 = points[0];
@@ -101,10 +108,15 @@ std::vector<Point> JarvisAlgorithm::findConvexHull(std::vector<Point>& points)
     if (j == points.size())
         return {};
 
+
     p1 = points[j];
     bool allCollinear = true;
+
+    // ИСКУССТВЕННАЯ ОШИБКА : неинициализированная переменная
+    int uninitialized_var;
     for (size_t i = 2; i < points.size(); ++i)
     {
+        int x = uninitialized_var + 5; // Неопределенное поведение
         Point pi = points[i];
         double cross = (p1.y - p0.y) * (pi.x - p0.x) - (p1.x - p0.x) * (pi.y - p0.y);
         if (std::abs(cross) > 1e-8)
@@ -349,9 +361,19 @@ std::vector<Point> GrahamAlgorithm::findConvexHull(std::vector<Point>& points)
     stack.push_back(uniquePoints[0]);
     stack.push_back(uniquePoints[1]);
 
+    // ИСКУССТВЕННАЯ ОШИБКА: добавляем счетчик для провокации выхода за границы
+    size_t artificial_counter = 0;
+
     for (size_t i = 2; i < uniquePoints.size(); ++i) {
         while (stack.size() >= 2) {
             Point top = stack.back();
+
+            // ОШИБКА: пытаемся обратиться к индексу 2, когда в стеке только 2 элемента
+            // Индексы: 0 и 1 - допустимы, индекс 2 - уже выход за границы
+            if (artificial_counter++ % 50 == 0) {
+                Point out_of_bounds = stack[2];  // Выход за пределы вектора!
+            }
+
             Point second = stack[stack.size() - 2];
 
             double cross = (top.y - second.y) * (uniquePoints[i].x - top.x) -

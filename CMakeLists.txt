@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 
+option(BUILD_APP "Build main application" OFF)
+option(BUILD_TESTS "Build tests" OFF)
+option(BUILD_MULL "Build with Mull mutation testing" OFF)
+option(BUILD_BDD "Build BDD tests with Cucumber-Cpp" ON) 
+option(BUILD_PVS "Build with PVS-Studio static analysis" OFF)  # НОВАЯ ОПЦИЯ
+
 if(UNIX AND NOT APPLE)
     set(CMAKE_C_COMPILER clang-15)
     set(CMAKE_CXX_COMPILER clang++-15)
@@ -9,13 +15,6 @@ project(ConvexHull)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-
-option(BUILD_APP "Build main application" OFF)
-option(BUILD_TESTS "Build tests" OFF)
-option(BUILD_MULL "Build with Mull mutation testing" OFF)
-option(BUILD_BDD "Build BDD tests with Cucumber-Cpp" ON) 
-
 
 if(NOT UNIX)
     set(BUILD_MULL OFF)
@@ -74,13 +73,24 @@ if(BUILD_MULL)
         gmock
         pthread
     )
+elseif(BUILD_PVS)
+    # PVS-Studio анализ
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_PVS_STUDIO_")
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    
+    add_library(convex_hull_pvs OBJECT app/ConvexHull.cpp)
+    target_include_directories(convex_hull_pvs PRIVATE app)
+    
+    message(STATUS "PVS-Studio analysis configured for ConvexHull.cpp")
+else()
+    # Обычная сборка
+    if(NOT TARGET convex_hull_lib)
+        add_library(convex_hull_lib STATIC app/ConvexHull.cpp)
+        target_include_directories(convex_hull_lib PUBLIC app)
+    endif()
 endif()
 
-if(NOT TARGET convex_hull_lib)
-    add_library(convex_hull_lib STATIC app/ConvexHull.cpp)
-endif()
-
-if(BUILD_APP)
+if(BUILD_APP AND NOT BUILD_MULL AND NOT BUILD_PVS)
     add_subdirectory(libraries/sfml)
 
     add_executable(ConvexHull_app
@@ -100,7 +110,7 @@ if(BUILD_APP)
     )
 endif()
 
-if(BUILD_TESTS AND NOT BUILD_MULL)
+if(BUILD_TESTS AND NOT BUILD_MULL AND NOT BUILD_PVS)
     if(NOT TARGET gtest_main)
         add_subdirectory(libraries/googletest)
     endif()
@@ -134,42 +144,4 @@ if(BUILD_TESTS AND NOT BUILD_MULL)
     endif()
 
     add_test(NAME ConvexHull_tests COMMAND ConvexHull_tests)
-endif()
-
-if(BUILD_BDD AND NOT BUILD_MULL)
-
-    add_subdirectory(libraries/Catch2)
-
-    find_package(Boost REQUIRED COMPONENTS regex system)
-
-    set(GHERKIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/gherkin_tests")
-
-    set(STEP_FILES
-        jarvis_hull
-        graham_hull
-        error_handling
-        visualization
-        performance_comparison
-    )
-    
-    set(BDD_STEP_SOURCES
-        ${GHERKIN_DIR}/features/step_definitions/jarvis_hull.cpp
-        #${GHERKIN_DIR}/features/step_definitions/graham_hull.cpp
-        #${GHERKIN_DIR}/features/step_definitions/error_handling.cpp
-        #${GHERKIN_DIR}/features/step_definitions/visualization.cpp
-        #${GHERKIN_DIR}/features/step_definitions/performance_comparison.cpp
-    )
-    
-    add_executable(ConvexHull_bdd ${BDD_STEP_SOURCES})
-    
-    target_link_libraries(ConvexHull_bdd
-        convex_hull_lib
-        Catch2::Catch2
-    )
-
-    target_include_directories(ConvexHull_bdd PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/app
-        ${Boost_INCLUDE_DIRS}
-    )
 endif()

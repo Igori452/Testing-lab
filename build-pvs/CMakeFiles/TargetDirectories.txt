@@ -1,0 +1,3 @@
+/project/build-pvs/CMakeFiles/convex_hull_pvs.dir
+/project/build-pvs/CMakeFiles/edit_cache.dir
+/project/build-pvs/CMakeFiles/rebuild_cache.dir

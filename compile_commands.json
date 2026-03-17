@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/project/build-pvs",
+  "command": "/usr/bin/clang++-15  -I/project/app  -D_PVS_STUDIO_ -std=gnu++17 -o CMakeFiles/convex_hull_pvs.dir/app/ConvexHull.cpp.o -c /project/app/ConvexHull.cpp",
+  "file": "/project/app/ConvexHull.cpp"
+}
+]
